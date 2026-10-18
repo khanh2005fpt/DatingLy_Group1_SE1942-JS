@@ -8,6 +8,7 @@ import '../../../../data/models/user_model.dart';
 import '../viewmodels/discovery_view_model.dart';
 import '../../../profile/presentation/viewmodels/preferences_view_model.dart';
 import '../../../profile/presentation/screens/view_profile_screen.dart';
+import '../../../chat/presentation/screens/match_celebration_screen.dart';
 
 class DiscoveryScreen extends ConsumerStatefulWidget {
   const DiscoveryScreen({super.key});
@@ -207,7 +208,11 @@ class _GenderSwipeTabState extends ConsumerState<_GenderSwipeTab>
             .recordSwipe(swipedId, isLike);
 
         if (matchId != null && mounted) {
-          _showMatchDialog(swipedProfile, matchId);
+          showMatchCelebration(
+            context,
+            matchId: matchId,
+            other: UserModel.fromMap(swipedProfile, swipedId),
+          );
         }
       } catch (e) {
         if (mounted) {
@@ -217,90 +222,6 @@ class _GenderSwipeTabState extends ConsumerState<_GenderSwipeTab>
         }
       }
     }
-  }
-
-  void _showMatchDialog(Map<String, dynamic> profile, String matchId) {
-    final avatarUrl =
-        (profile['avatar_urls'] != null &&
-            (profile['avatar_urls'] as List).isNotEmpty)
-        ? profile['avatar_urls'][0] as String
-        : null;
-    final name = profile['full_name'] ?? 'người ấy';
-
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (dialogCtx) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ShaderMask(
-                shaderCallback: (bounds) =>
-                    AppColors.primaryGradient.createShader(bounds),
-                child: const Text(
-                  '🎉 It\'s a Match!',
-                  style: TextStyle(
-                    fontSize: 26,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              if (avatarUrl != null)
-                CircleAvatar(
-                  radius: 45,
-                  backgroundImage: NetworkImage(avatarUrl),
-                )
-              else
-                const CircleAvatar(
-                  radius: 45,
-                  child: Icon(Icons.person, size: 45),
-                ),
-              const SizedBox(height: 12),
-              Text(
-                'Bạn và $name cùng thích nhau!',
-                textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 16),
-              ),
-              const SizedBox(height: 20),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => Navigator.pop(dialogCtx),
-                      child: const Text('Để sau'),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      icon: const Icon(Icons.chat_bubble_outline, size: 18),
-                      label: const Text('Nhắn tin'),
-                      onPressed: () {
-                        Navigator.pop(dialogCtx);
-                        context.push(
-                          '/chat/$matchId',
-                          extra: {
-                            'otherUserName': name,
-                            'otherAvatarUrl': avatarUrl,
-                            'otherBio': profile['bio'],
-                            'otherTags': profile['tags'],
-                          },
-                        );
-                      },
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
   }
 
   @override
