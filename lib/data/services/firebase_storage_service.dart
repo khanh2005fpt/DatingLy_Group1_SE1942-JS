@@ -21,6 +21,23 @@ class FirebaseStorageService {
     return await uploadTask.ref.getDownloadURL();
   }
 
+  Future<String> uploadChatImage({
+    required String matchId,
+    required XFile imageFile,
+  }) async {
+    final fileExtension = imageFile.name.split('.').last.toLowerCase();
+    final fileName = 'img_${DateTime.now().millisecondsSinceEpoch}.$fileExtension';
+    final ref = _storage.ref().child('chat_images').child(matchId).child(fileName);
+
+    final bytes = await imageFile.readAsBytes();
+    final uploadTask = await ref.putData(
+      bytes,
+      SettableMetadata(contentType: 'image/$fileExtension'),
+    );
+
+    return await uploadTask.ref.getDownloadURL();
+  }
+
   Future<String> uploadPhoto({
     required String userId,
     required XFile imageFile,

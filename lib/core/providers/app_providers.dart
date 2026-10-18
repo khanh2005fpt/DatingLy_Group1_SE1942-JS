@@ -1,4 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../data/services/chat_cache_service.dart';
+import '../../data/services/chat_service.dart';
 import '../../data/services/firebase_auth_service.dart';
 import '../../data/services/firestore_service.dart';
 import '../../data/services/firebase_storage_service.dart';
@@ -23,6 +25,16 @@ final firestoreServiceProvider = Provider<FirestoreService>((ref) {
 // Provider cho Firebase Storage Service
 final firebaseStorageServiceProvider = Provider<FirebaseStorageService>((ref) {
   return FirebaseStorageService();
+});
+
+// Provider cho Chat Service (matches + messages trên Firestore)
+final chatServiceProvider = Provider<ChatService>((ref) {
+  return ChatService();
+});
+
+// Provider cho cache tin nhắn SQLite
+final chatCacheServiceProvider = Provider<ChatCacheService>((ref) {
+  return ChatCacheService();
 });
 
 // Provider cho Notification Service

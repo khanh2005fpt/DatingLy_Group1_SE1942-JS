@@ -1,7 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/user_model.dart';
 import '../models/match_model.dart';
-import '../models/message_model.dart';
 
 class FirestoreService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
@@ -12,8 +11,6 @@ class FirestoreService {
       _db.collection('swipes');
   CollectionReference<Map<String, dynamic>> get _matchesCol =>
       _db.collection('matches');
-  CollectionReference<Map<String, dynamic>> get _messagesCol =>
-      _db.collection('messages');
 
   // ==================== PROFILE / USER ====================
 
@@ -101,113 +98,18 @@ class FirestoreService {
         await _swipesCol.doc('${targetUserId}_$myId').get();
 
     if (reverseDoc.exists && reverseDoc.data()?['action'] == 'like') {
-      // It's a match!
-      final matchDoc = await _matchesCol.add({
-        'user1_id': myId,
-        'user2_id': targetUserId,
-        'users': [myId, targetUserId],
-        'created_at': FieldValue.serverTimestamp(),
-        'last_message': 'Hai bạn đã tương hợp!',
-        'last_message_time': FieldValue.serverTimestamp(),
-      });
-      return matchDoc.id;
+      // It's a match! Chưa có tin nhắn -> hiện ở hàng "Tương hợp mới"
+      final matchId = MatchModel.idFor(myId, targetUserId);
+      final matchRef = _matchesCol.doc(matchId);
+      if (!(await matchRef.get()).exists) {
+        await matchRef.set(
+          MatchModel(id: matchId, user1Id: myId, user2Id: targetUserId)
+              .toMap(),
+        );
+      }
+      return matchId;
     }
 
     return null;
-  }
-
-  // ==================== MATCHES & CHAT ====================
-
-  Stream<List<MatchModel>> streamMatches(String myId) {
-    return _matchesCol
-        .where('users', arrayContains: myId)
-        .snapshots()
-        .asyncMap((snapshot) async {
-      final List<MatchModel> list = [];
-
-      for (final doc in snapshot.docs) {
-        final data = doc.data();
-        final otherId = data['user1_id'] == myId
-            ? (data['user2_id'] as String)
-            : (data['user1_id'] as String);
-
-        final otherProfile = await getUserProfile(otherId);
-
-        // Đếm số tin nhắn chưa đọc (lọc phía client để khỏi cần composite index)
-        final msgs =
-            await _messagesCol.where('match_id', isEqualTo: doc.id).get();
-        final unread = msgs.docs.where((m) {
-          final d = m.data();
-          return d['sender_id'] != myId && d['is_read'] != true;
-        }).length;
-
-        list.add(MatchModel.fromMap(
-          data,
-          doc.id,
-          otherProfile: otherProfile,
-        ).copyWith(unreadCount: unread));
-      }
-
-      list.sort((a, b) => (b.lastMessageTime ?? DateTime(0))
-          .compareTo(a.lastMessageTime ?? DateTime(0)));
-      return list;
-    });
-  }
-
-  Stream<List<MessageModel>> streamMessages(String matchId) {
-    // Sắp xếp phía client để khỏi cần composite index (match_id + created_at)
-    return _messagesCol
-        .where('match_id', isEqualTo: matchId)
-        .snapshots()
-        .map((snapshot) {
-      final list = snapshot.docs
-          .map((doc) => MessageModel.fromMap(doc.data(), doc.id))
-          .toList();
-      list.sort((a, b) => (a.createdAt ?? DateTime.now())
-          .compareTo(b.createdAt ?? DateTime.now()));
-      return list;
-    });
-  }
-
-  Future<void> sendMessage({
-    required String matchId,
-    required String senderId,
-    required String content,
-    String type = 'text',
-  }) async {
-    // 1. Thêm tin nhắn vào Firestore
-    await _messagesCol.add({
-      'match_id': matchId,
-      'sender_id': senderId,
-      'content': content,
-      'message_type': type,
-      'is_read': false,
-      'created_at': FieldValue.serverTimestamp(),
-    });
-
-    // 2. Cập nhật last_message vào match
-    await _matchesCol.doc(matchId).update({
-      'last_message': content,
-      'last_message_time': FieldValue.serverTimestamp(),
-    });
-  }
-
-  Future<void> markMessagesAsRead({
-    required String matchId,
-    required String myId,
-  }) async {
-    final snap =
-        await _messagesCol.where('match_id', isEqualTo: matchId).get();
-    final unread = snap.docs.where((d) {
-      final data = d.data();
-      return data['sender_id'] != myId && data['is_read'] != true;
-    });
-    if (unread.isEmpty) return;
-
-    final batch = _db.batch();
-    for (final doc in unread) {
-      batch.update(doc.reference, {'is_read': true});
-    }
-    await batch.commit();
   }
 }

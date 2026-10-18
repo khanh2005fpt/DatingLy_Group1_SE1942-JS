@@ -2,27 +2,30 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/providers/app_providers.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../data/models/match_model.dart';
+import '../utils/chat_time_format.dart';
 import '../viewmodels/chat_view_model.dart';
+import '../widgets/chat_avatar.dart';
 
 class MatchListScreen extends ConsumerWidget {
   const MatchListScreen({super.key});
 
+  static String _displayName(MatchModel match) {
+    final name = match.otherProfile?.fullName ?? '';
+    return name.isNotEmpty ? name : 'Người ẩn danh';
+  }
+
   Future<void> _openChat(BuildContext context, MatchModel match) async {
     final profile = match.otherProfile;
-    final name = profile?.fullName;
-    final avatar = profile?.mainAvatarUrl;
-    final bio = profile?.bio;
-    final tags = profile?.tags ?? <String>[];
-
     await context.push(
       '/chat/${match.id}',
       extra: {
-        'otherUserName': name,
-        'otherAvatarUrl': avatar,
-        'otherBio': bio,
-        'otherTags': tags,
+        'otherUserName': profile?.fullName,
+        'otherAvatarUrl': profile?.mainAvatarUrl,
+        'otherBio': profile?.bio,
+        'otherTags': profile?.tags ?? <String>[],
       },
     );
   }
@@ -30,6 +33,7 @@ class MatchListScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final matchesAsync = ref.watch(matchesStreamProvider);
+    final myId = ref.watch(authStateChangesProvider).value?.uid;
 
     return Scaffold(
       appBar: AppBar(
@@ -41,7 +45,7 @@ class MatchListScreen extends ConsumerWidget {
           ),
         ),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          icon: const Icon(Icons.arrow_back),
           onPressed: () => context.go('/discovery'),
         ),
       ),
@@ -56,130 +60,229 @@ class MatchListScreen extends ConsumerWidget {
           ),
         ),
         data: (matches) {
-          if (matches.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.favorite_border,
-                    size: 72,
-                    color: Colors.grey[300],
-                  ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'Bạn chưa tương hợp với ai cả.',
-                    style: TextStyle(color: Colors.grey, fontSize: 16),
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Hãy tiếp tục khám phá!',
-                    style: TextStyle(color: Colors.grey),
-                  ),
-                  const SizedBox(height: 20),
-                  ElevatedButton(
-                    onPressed: () => context.go('/discovery'),
-                    child: const Text('Khám phá ngay'),
-                  ),
-                ],
-              ),
-            );
-          }
+          if (matches.isEmpty) return _buildEmpty(context);
 
-          return ListView.separated(
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            itemCount: matches.length,
-            separatorBuilder: (context, separatorIndex) =>
-                const Divider(height: 1, indent: 80),
-            itemBuilder: (context, index) {
-              final match = matches[index];
-              final profile = match.otherProfile;
-              final name = profile?.fullName.isNotEmpty == true
-                  ? profile!.fullName
-                  : 'Người ẩn danh';
-              final avatar = profile?.mainAvatarUrl;
-              final lastMsg = match.lastMessage ?? 'Hãy bắt đầu trò chuyện!';
-              final unread = match.unreadCount;
+          final newMatches = matches.where((m) => m.isNewMatch).toList();
+          final conversations = matches.where((m) => !m.isNewMatch).toList();
 
-              return ListTile(
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 8,
-                ),
-                leading: Stack(
-                  children: [
-                    CircleAvatar(
-                      radius: 28,
-                      backgroundColor: Colors.grey[200],
-                      backgroundImage: (avatar != null && avatar.isNotEmpty)
-                          ? NetworkImage(avatar)
-                          : null,
-                      child: (avatar == null || avatar.isEmpty)
-                          ? Text(
-                              name.isNotEmpty ? name[0].toUpperCase() : '?',
-                              style: const TextStyle(
-                                fontSize: 22,
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.primary,
-                              ),
-                            )
-                          : null,
-                    ),
-                    Positioned(
-                      right: 0,
-                      bottom: 0,
-                      child: Container(
-                        width: 14,
-                        height: 14,
-                        decoration: BoxDecoration(
-                          color: Colors.green,
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 2),
+          return CustomScrollView(
+            slivers: [
+              _sectionHeader('Tương hợp mới', newMatches.length),
+              SliverToBoxAdapter(
+                child: newMatches.isEmpty
+                    ? _hint('Chưa có tương hợp mới. Tiếp tục quẹt nhé!')
+                    : SizedBox(
+                        height: 116,
+                        child: ListView.separated(
+                          scrollDirection: Axis.horizontal,
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          itemCount: newMatches.length,
+                          separatorBuilder: (context, index) =>
+                              const SizedBox(width: 14),
+                          itemBuilder: (context, index) =>
+                              _buildNewMatch(context, newMatches[index]),
                         ),
                       ),
-                    ),
-                  ],
+              ),
+              _sectionHeader('Cuộc trò chuyện', conversations.length),
+              if (conversations.isEmpty)
+                SliverToBoxAdapter(
+                  child: _hint(
+                      'Chạm vào một tương hợp mới ở trên để bắt đầu trò chuyện.'),
+                )
+              else
+                SliverList.separated(
+                  itemCount: conversations.length,
+                  separatorBuilder: (context, index) =>
+                      const Divider(height: 1, indent: 84),
+                  itemBuilder: (context, index) => _buildConversation(
+                      context, conversations[index], myId),
                 ),
-                title: Text(
-                  name,
-                  style: TextStyle(
-                    fontWeight:
-                        unread > 0 ? FontWeight.bold : FontWeight.w600,
-                    fontSize: 16,
-                  ),
-                ),
-                subtitle: Text(
-                  lastMsg,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: unread > 0 ? AppColors.textPrimary : Colors.grey[600],
-                    fontWeight:
-                        unread > 0 ? FontWeight.w600 : FontWeight.normal,
-                  ),
-                ),
-                trailing: unread > 0
-                    ? Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: const BoxDecoration(
-                          color: AppColors.primary,
-                          shape: BoxShape.circle,
-                        ),
-                        child: Text(
-                          unread.toString(),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      )
-                    : null,
-                onTap: () => _openChat(context, match),
-              );
-            },
+              const SliverToBoxAdapter(child: SizedBox(height: 16)),
+            ],
           );
         },
+      ),
+    );
+  }
+
+  Widget _sectionHeader(String title, int count) {
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 10),
+        child: Row(
+          children: [
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: AppColors.primary,
+              ),
+            ),
+            if (count > 0) ...[
+              const SizedBox(width: 6),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 1),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  '$count',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _hint(String text) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Text(text, style: const TextStyle(color: Colors.grey)),
+    );
+  }
+
+  Widget _buildNewMatch(BuildContext context, MatchModel match) {
+    final name = _displayName(match);
+    return GestureDetector(
+      onTap: () => _openChat(context, match),
+      child: SizedBox(
+        width: 76,
+        child: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(3),
+              decoration: const BoxDecoration(
+                gradient: AppColors.primaryGradient,
+                shape: BoxShape.circle,
+              ),
+              child: Container(
+                padding: const EdgeInsets.all(2),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).scaffoldBackgroundColor,
+                  shape: BoxShape.circle,
+                ),
+                child: ChatAvatar(
+                  url: match.otherProfile?.mainAvatarUrl,
+                  name: name,
+                  radius: 32,
+                ),
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              name.split(' ').last,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildConversation(
+      BuildContext context, MatchModel match, String? myId) {
+    final name = _displayName(match);
+    final unread = match.unreadCount;
+    final hasUnread = unread > 0;
+    final prefix = match.lastSenderId == myId ? 'Bạn: ' : '';
+    final time = match.lastMessageTime;
+
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      leading: ChatAvatar(
+        url: match.otherProfile?.mainAvatarUrl,
+        name: name,
+        radius: 28,
+      ),
+      title: Text(
+        name,
+        style: TextStyle(
+          fontWeight: hasUnread ? FontWeight.bold : FontWeight.w600,
+          fontSize: 16,
+        ),
+      ),
+      subtitle: Text(
+        '$prefix${match.lastMessage ?? ''}',
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: TextStyle(
+          color: hasUnread
+              ? Theme.of(context).colorScheme.onSurface
+              : Colors.grey[600],
+          fontWeight: hasUnread ? FontWeight.w600 : FontWeight.normal,
+        ),
+      ),
+      trailing: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          if (time != null)
+            Text(
+              ChatTimeFormat.listTime(time),
+              style: TextStyle(
+                fontSize: 12,
+                color: hasUnread ? AppColors.primary : Colors.grey,
+              ),
+            ),
+          const SizedBox(height: 6),
+          if (hasUnread)
+            Container(
+              constraints: const BoxConstraints(minWidth: 22),
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+              decoration: BoxDecoration(
+                color: AppColors.primary,
+                borderRadius: BorderRadius.circular(11),
+              ),
+              child: Text(
+                unread > 99 ? '99+' : '$unread',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+        ],
+      ),
+      onTap: () => _openChat(context, match),
+    );
+  }
+
+  Widget _buildEmpty(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.favorite_border, size: 72, color: Colors.grey[300]),
+          const SizedBox(height: 16),
+          const Text(
+            'Bạn chưa tương hợp với ai cả.',
+            style: TextStyle(color: Colors.grey, fontSize: 16),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Hãy tiếp tục khám phá!',
+            style: TextStyle(color: Colors.grey),
+          ),
+          const SizedBox(height: 20),
+          ElevatedButton(
+            onPressed: () => context.go('/discovery'),
+            child: const Text('Khám phá ngay'),
+          ),
+        ],
       ),
     );
   }

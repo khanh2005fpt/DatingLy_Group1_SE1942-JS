@@ -49,7 +49,9 @@ final notificationBootstrapProvider = Provider<void>((ref) {
           body: 'Bạn và $name đã thích nhau. Nhắn tin ngay nhé!',
           payload: '/chat/${match.id}',
         );
-      } else if (match.unreadCount > old.unreadCount) {
+      } else if (match.unreadCount > old.unreadCount &&
+          // Đang mở đúng phòng chat đó thì không cần báo
+          !ref.exists(chatRoomViewModelProvider(match.id))) {
         notifications.showNotification(
           title: name,
           body: match.lastMessage ?? 'Bạn có tin nhắn mới',
