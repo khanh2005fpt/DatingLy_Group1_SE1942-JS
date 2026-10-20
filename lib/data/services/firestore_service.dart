@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/user_model.dart';
 import '../models/match_model.dart';
 import '../models/message_model.dart';
+import '../models/who_liked_user_item.dart';
 
 class FirestoreService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
@@ -78,14 +79,15 @@ class FirestoreService {
   }
 
   /// Ghi nhận swipe và kiểm tra nếu có match
-  /// Trả về matchId nếu cả 2 bên cùng Like
+  /// Trả về matchId nếu cả 2 bên cùng Like / Super Like
   Future<String?> recordSwipe({
     required String myId,
     required String targetUserId,
     required bool isLike,
+    bool isSuperLike = false,
   }) async {
     final swipeDocId = '${myId}_$targetUserId';
-    final action = isLike ? 'like' : 'nope';
+    final action = isSuperLike ? 'superlike' : (isLike ? 'like' : 'nope');
 
     await _swipesCol.doc(swipeDocId).set({
       'swiper_id': myId,
@@ -94,26 +96,156 @@ class FirestoreService {
       'created_at': FieldValue.serverTimestamp(),
     });
 
-    if (!isLike) return null;
+    if (!isLike && !isSuperLike) return null;
 
-    // Kiểm tra xem đối phương đã like mình chưa
+    // Kiểm tra xem đối phương đã like/superlike mình chưa
     final reverseDoc =
         await _swipesCol.doc('${targetUserId}_$myId').get();
 
-    if (reverseDoc.exists && reverseDoc.data()?['action'] == 'like') {
-      // It's a match!
-      final matchDoc = await _matchesCol.add({
-        'user1_id': myId,
-        'user2_id': targetUserId,
-        'users': [myId, targetUserId],
-        'created_at': FieldValue.serverTimestamp(),
-        'last_message': 'Hai bạn đã tương hợp!',
-        'last_message_time': FieldValue.serverTimestamp(),
-      });
-      return matchDoc.id;
+    if (reverseDoc.exists) {
+      final reverseAction = reverseDoc.data()?['action'];
+      if (reverseAction == 'like' || reverseAction == 'superlike') {
+        // It's a match!
+        final matchDoc = await _matchesCol.add({
+          'user1_id': myId,
+          'user2_id': targetUserId,
+          'users': [myId, targetUserId],
+          'created_at': FieldValue.serverTimestamp(),
+          'last_message': isSuperLike ? 'Super Like tương hợp! ⭐' : 'Hai bạn đã tương hợp!',
+          'last_message_time': FieldValue.serverTimestamp(),
+        });
+        return matchDoc.id;
+      }
     }
 
     return null;
+  }
+
+  /// Hoàn tác (Undo/Rewind) swipe giữa myId và targetUserId
+  Future<void> undoSwipe({
+    required String myId,
+    required String targetUserId,
+  }) async {
+    final swipeDocId = '${myId}_$targetUserId';
+    await _swipesCol.doc(swipeDocId).delete();
+
+    // Đồng thời xóa match nếu vừa mới tạo do lượt swipe này (chưa có tin nhắn thật)
+    try {
+      final matchQuery = await _matchesCol
+          .where('users', arrayContains: myId)
+          .get();
+      for (final doc in matchQuery.docs) {
+        final users = List<String>.from(doc.data()['users'] ?? []);
+        if (users.contains(targetUserId)) {
+          final lastMsg = doc.data()['last_message'];
+          if (lastMsg == null ||
+              lastMsg == 'Hai bạn đã tương hợp!' ||
+              lastMsg == 'Super Like tương hợp! ⭐') {
+            await _matchesCol.doc(doc.id).delete();
+          }
+        }
+      }
+    } catch (_) {}
+  }
+
+  /// Lấy danh sách những người đã Like/SuperLike tài khoản của user (Who Liked You)
+  Future<List<WhoLikedUserItem>> getWhoLikedMe(String myId) async {
+    // 1. Lấy danh sách swipe mà swiped_id == myId và action in ['like', 'superlike']
+    final incomingSwipesSnap = await _swipesCol
+        .where('swiped_id', isEqualTo: myId)
+        .where('action', whereIn: ['like', 'superlike'])
+        .get();
+
+    if (incomingSwipesSnap.docs.isEmpty) return [];
+
+    // 2. Lấy danh sách swipe mà myId đã quẹt để biết đã match hay chưa
+    final mySwipesSnap =
+        await _swipesCol.where('swiper_id', isEqualTo: myId).get();
+    final myLikedIds = <String>{};
+    for (final doc in mySwipesSnap.docs) {
+      final a = doc.data()['action'];
+      if (a == 'like' || a == 'superlike') {
+        myLikedIds.add(doc.data()['swiped_id'] as String);
+      }
+    }
+
+    final List<WhoLikedUserItem> result = [];
+    for (final doc in incomingSwipesSnap.docs) {
+      final data = doc.data();
+      final swiperId = data['swiper_id'] as String?;
+      if (swiperId == null || swiperId == myId) continue;
+
+      final userProfile = await getUserProfile(swiperId);
+      if (userProfile != null) {
+        final timestamp = data['created_at'] != null
+            ? (data['created_at'] as Timestamp).toDate()
+            : null;
+        result.add(WhoLikedUserItem(
+          user: userProfile,
+          likedAt: timestamp,
+          isMatched: myLikedIds.contains(swiperId),
+          isSuperLike: data['action'] == 'superlike',
+        ));
+      }
+    }
+
+    // Sắp xếp: Ưu tiên Super Like lên trước, sau đó sắp xếp theo thời gian mới nhất
+    result.sort((a, b) {
+      if (a.isSuperLike && !b.isSuperLike) return -1;
+      if (!a.isSuperLike && b.isSuperLike) return 1;
+      return (b.likedAt ?? DateTime(0)).compareTo(a.likedAt ?? DateTime(0));
+    });
+
+    return result;
+  }
+
+  /// Stream realtime danh sách những người đã Like tài khoản của user
+  Stream<List<WhoLikedUserItem>> streamWhoLikedMe(String myId) {
+    return _swipesCol
+        .where('swiped_id', isEqualTo: myId)
+        .where('action', whereIn: ['like', 'superlike'])
+        .snapshots()
+        .asyncMap((snapshot) async {
+      if (snapshot.docs.isEmpty) return <WhoLikedUserItem>[];
+
+      final mySwipesSnap =
+          await _swipesCol.where('swiper_id', isEqualTo: myId).get();
+      final myLikedIds = <String>{};
+      for (final doc in mySwipesSnap.docs) {
+        final a = doc.data()['action'];
+        if (a == 'like' || a == 'superlike') {
+          myLikedIds.add(doc.data()['swiped_id'] as String);
+        }
+      }
+
+      final List<WhoLikedUserItem> result = [];
+      for (final doc in snapshot.docs) {
+        final data = doc.data();
+        final swiperId = data['swiper_id'] as String?;
+        if (swiperId == null || swiperId == myId) continue;
+
+        final userProfile = await getUserProfile(swiperId);
+        if (userProfile != null) {
+          final timestamp = data['created_at'] != null
+              ? (data['created_at'] as Timestamp).toDate()
+              : null;
+          result.add(WhoLikedUserItem(
+            user: userProfile,
+            likedAt: timestamp,
+            isMatched: myLikedIds.contains(swiperId),
+            isSuperLike: data['action'] == 'superlike',
+          ));
+        }
+      }
+
+      result.sort((a, b) {
+        if (a.isSuperLike && !b.isSuperLike) return -1;
+        if (!a.isSuperLike && b.isSuperLike) return 1;
+        return (b.likedAt ?? DateTime(0)).compareTo(a.likedAt ?? DateTime(0));
+      });
+
+      return result;
+    });
   }
 
   // ==================== MATCHES & CHAT ====================

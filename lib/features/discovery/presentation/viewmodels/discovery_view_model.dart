@@ -59,8 +59,12 @@ class DiscoveryViewModel extends Notifier<DiscoveryState> {
     }
   }
 
-  /// Ghi nhận swipe, trả về matchId nếu hai bên cùng thích.
-  Future<String?> recordSwipe(String targetUserId, bool isLike) async {
+  /// Ghi nhận swipe, trả về matchId nếu hai bên cùng thích / super like.
+  Future<String?> recordSwipe(
+    String targetUserId,
+    bool isLike, {
+    bool isSuperLike = false,
+  }) async {
     final myId = ref.read(firebaseAuthServiceProvider).currentUser?.uid;
     if (myId == null) return null;
 
@@ -68,6 +72,7 @@ class DiscoveryViewModel extends Notifier<DiscoveryState> {
           myId: myId,
           targetUserId: targetUserId,
           isLike: isLike,
+          isSuperLike: isSuperLike,
         );
   }
 }

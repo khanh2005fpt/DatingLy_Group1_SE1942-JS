@@ -23,10 +23,11 @@ class AiService {
     required String style,
   }) async {
     if (apiKey.isEmpty) {
+      final topic = otherTags.isNotEmpty ? otherTags.first : 'âm nhạc & du lịch';
       return [
-        'Vui lòng chạy app với --dart-define=GEMINI_API_KEY=<key>.',
-        'Mock: (Phong cách $style) Chào bạn, rất vui được làm quen.',
-        'Mock: Sở thích của bạn là gì?',
+        'Chào bạn! Rất vui được kết nối cùng bạn 😊',
+        'Mình thấy bạn có sở thích về $topic, chúng mình chia sẻ thêm nhé!',
+        'Hôm nay của bạn thế nào? Rất vui được làm quen!',
       ];
     }
 

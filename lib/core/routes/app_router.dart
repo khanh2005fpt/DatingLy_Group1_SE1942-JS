@@ -9,6 +9,9 @@ import '../../features/chat/presentation/screens/chat_screen.dart';
 import '../../features/chat/presentation/screens/mini_game_screen.dart';
 import '../../features/profile/presentation/screens/profile_screen.dart';
 import '../../features/profile/presentation/screens/edit_profile_screen.dart';
+import '../../features/activity/presentation/screens/notification_center_screen.dart';
+import '../../features/activity/presentation/screens/who_liked_me_screen.dart';
+import '../../features/activity/presentation/screens/history_rewind_screen.dart';
 
 class AppRouter {
   static final router = GoRouter(
@@ -73,6 +76,18 @@ class AppRouter {
           final profile = state.extra as Map<String, dynamic>?;
           return EditProfileScreen(initialProfile: profile);
         },
+      ),
+      GoRoute(
+        path: '/notifications',
+        builder: (context, state) => const NotificationCenterScreen(),
+      ),
+      GoRoute(
+        path: '/who-liked-me',
+        builder: (context, state) => const WhoLikedMeScreen(),
+      ),
+      GoRoute(
+        path: '/history-rewind',
+        builder: (context, state) => const HistoryRewindScreen(),
       ),
     ],
   );

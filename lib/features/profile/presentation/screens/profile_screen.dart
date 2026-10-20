@@ -6,6 +6,9 @@ import '../../../../data/models/user_model.dart';
 import '../../../auth/presentation/viewmodels/auth_view_model.dart';
 import '../viewmodels/profile_view_model.dart';
 import '../viewmodels/preferences_view_model.dart';
+import '../../../../data/local/database_helper.dart';
+import '../../../activity/presentation/viewmodels/notification_view_model.dart';
+import '../../../activity/presentation/viewmodels/who_liked_me_view_model.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
@@ -36,6 +39,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       ),
     );
     if (confirm == true) {
+      // Xóa toàn bộ cache SQLite khi đăng xuất
+      await DatabaseHelper.instance.clearAllCache();
       await ref.read(authViewModelProvider.notifier).signOut();
       if (mounted) context.go('/login');
     }
@@ -205,6 +210,170 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   ),
                   const SizedBox(height: 32),
                 ],
+
+                // ─── THÔNG BÁO & NHẬT KÝ HOẠT ĐỘNG (Module 4) ───
+                _sectionTitle('Thông báo & Nhật ký hoạt động'),
+                const SizedBox(height: 8),
+                Card(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Column(
+                    children: [
+                      Consumer(
+                        builder: (context, ref, _) {
+                          final unread =
+                              ref.watch(unreadNotificationCountProvider);
+                          return ListTile(
+                            leading: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: AppColors.primary.withValues(alpha: 0.1),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.notifications_active_outlined,
+                                color: AppColors.primary,
+                                size: 22,
+                              ),
+                            ),
+                            title: const Text(
+                              'Trung tâm thông báo',
+                              style: TextStyle(fontWeight: FontWeight.w600),
+                            ),
+                            subtitle: const Text(
+                              'Lịch sử thông báo SQLite (Match, Like, Chat)',
+                              style: TextStyle(fontSize: 12),
+                            ),
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                if (unread > 0)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 2,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.primary,
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: Text(
+                                      '$unread',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                const SizedBox(width: 4),
+                                const Icon(
+                                  Icons.arrow_forward_ios,
+                                  size: 16,
+                                  color: Colors.grey,
+                                ),
+                              ],
+                            ),
+                            onTap: () => context.push('/notifications'),
+                          );
+                        },
+                      ),
+                      const Divider(height: 1, indent: 64),
+                      Consumer(
+                        builder: (context, ref, _) {
+                          final whoLikedCount =
+                              ref.watch(whoLikedMeCountProvider);
+                          return ListTile(
+                            leading: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFFFB300)
+                                    .withValues(alpha: 0.15),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.star_rounded,
+                                color: Color(0xFFFFB300),
+                                size: 22,
+                              ),
+                            ),
+                            title: const Text(
+                              'Ai đã thích bạn (DatingLy Gold)',
+                              style: TextStyle(fontWeight: FontWeight.w600),
+                            ),
+                            subtitle: const Text(
+                              'Xem ảnh làm mờ dạng lưới & tương hợp ngay',
+                              style: TextStyle(fontSize: 12),
+                            ),
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                if (whoLikedCount > 0)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 2,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFFFB300),
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: Text(
+                                      '$whoLikedCount',
+                                      style: const TextStyle(
+                                        color: Colors.black87,
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w900,
+                                      ),
+                                    ),
+                                  ),
+                                const SizedBox(width: 4),
+                                const Icon(
+                                  Icons.arrow_forward_ios,
+                                  size: 16,
+                                  color: Colors.grey,
+                                ),
+                              ],
+                            ),
+                            onTap: () => context.push('/who-liked-me'),
+                          );
+                        },
+                      ),
+                      const Divider(height: 1, indent: 64),
+                      ListTile(
+                        leading: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color:
+                                const Color(0xFF673AB7).withValues(alpha: 0.1),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.history_rounded,
+                            color: Color(0xFF673AB7),
+                            size: 22,
+                          ),
+                        ),
+                        title: const Text(
+                          'Lịch sử quẹt & Hoàn tác (Rewind)',
+                          style: TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                        subtitle: const Text(
+                          'Cache SQLite & nút hoàn tác lượt quẹt',
+                          style: TextStyle(fontSize: 12),
+                        ),
+                        trailing: const Icon(
+                          Icons.arrow_forward_ios,
+                          size: 16,
+                          color: Colors.grey,
+                        ),
+                        onTap: () => context.push('/history-rewind'),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
 
                 // ─── CẤU HÌNH & TRẠNG THÁI (SharedPreferences) ───
                 _sectionTitle('Cài đặt & Cấu hình (SharedPreferences)'),

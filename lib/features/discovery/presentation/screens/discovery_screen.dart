@@ -8,6 +8,10 @@ import '../../../../data/models/user_model.dart';
 import '../viewmodels/discovery_view_model.dart';
 import '../../../profile/presentation/viewmodels/preferences_view_model.dart';
 import '../../../profile/presentation/screens/view_profile_screen.dart';
+import '../../../../data/models/swipe_history_model.dart';
+import '../../../activity/presentation/viewmodels/notification_view_model.dart';
+import '../../../activity/presentation/viewmodels/who_liked_me_view_model.dart';
+import '../../../activity/presentation/viewmodels/swipe_history_view_model.dart';
 
 class DiscoveryScreen extends ConsumerStatefulWidget {
   const DiscoveryScreen({super.key});
@@ -71,6 +75,103 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen>
           onPressed: () => context.push('/profile'),
         ),
         actions: [
+          // 1. Who Liked You (Gold Flame/Star)
+          Consumer(
+            builder: (context, ref, _) {
+              final whoLikedCount = ref.watch(whoLikedMeCountProvider);
+              return Stack(
+                alignment: Alignment.center,
+                children: [
+                  IconButton(
+                    tooltip: 'Ai đã thích bạn (Gold)',
+                    icon: const Icon(
+                      Icons.star_rounded,
+                      color: Color(0xFFFFB300),
+                      size: 26,
+                    ),
+                    onPressed: () => context.push('/who-liked-me'),
+                  ),
+                  if (whoLikedCount > 0)
+                    Positioned(
+                      right: 6,
+                      top: 8,
+                      child: Container(
+                        padding: const EdgeInsets.all(3),
+                        decoration: const BoxDecoration(
+                          color: Color(0xFFFFB300),
+                          shape: BoxShape.circle,
+                        ),
+                        constraints: const BoxConstraints(
+                          minWidth: 16,
+                          minHeight: 16,
+                        ),
+                        child: Text(
+                          whoLikedCount > 9 ? '9+' : whoLikedCount.toString(),
+                          style: const TextStyle(
+                            color: Colors.black87,
+                            fontSize: 9.5,
+                            fontWeight: FontWeight.w900,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            },
+          ),
+          // 2. History & Rewind
+          IconButton(
+            tooltip: 'Lịch sử & Hoàn tác',
+            icon: const Icon(Icons.history_rounded, color: Colors.grey, size: 24),
+            onPressed: () => context.push('/history-rewind'),
+          ),
+          // 3. Notification Center
+          Consumer(
+            builder: (context, ref, _) {
+              final notifUnread = ref.watch(unreadNotificationCountProvider);
+              return Stack(
+                alignment: Alignment.center,
+                children: [
+                  IconButton(
+                    tooltip: 'Trung tâm thông báo',
+                    icon: const Icon(
+                      Icons.notifications_none_rounded,
+                      color: Colors.grey,
+                      size: 24,
+                    ),
+                    onPressed: () => context.push('/notifications'),
+                  ),
+                  if (notifUnread > 0)
+                    Positioned(
+                      right: 6,
+                      top: 8,
+                      child: Container(
+                        padding: const EdgeInsets.all(3),
+                        decoration: const BoxDecoration(
+                          color: AppColors.primary,
+                          shape: BoxShape.circle,
+                        ),
+                        constraints: const BoxConstraints(
+                          minWidth: 16,
+                          minHeight: 16,
+                        ),
+                        child: Text(
+                          notifUnread > 9 ? '9+' : notifUnread.toString(),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 9.5,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            },
+          ),
+          // 4. Chat / Matches
           Consumer(
             builder: (context, ref, _) {
               final unreadCount = ref.watch(matchCountProvider);
@@ -78,6 +179,7 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen>
                 alignment: Alignment.center,
                 children: [
                   IconButton(
+                    tooltip: 'Tin nhắn',
                     icon: const Icon(
                       Icons.chat_bubble_outline,
                       color: Colors.grey,
@@ -198,16 +300,38 @@ class _GenderSwipeTabState extends ConsumerState<_GenderSwipeTab>
   ) async {
     if (activity is Swipe) {
       final isLike = activity.direction == AxisDirection.right;
+      final isSuperLike = activity.direction == AxisDirection.up;
       final swipedProfile = _profiles[previousIndex];
       final swipedId = swipedProfile['id'];
+      final action = isSuperLike ? 'superlike' : (isLike ? 'like' : 'nope');
+
+      // Lưu thao tác vào SQLite swiped_history_cache
+      ref.read(swipeHistoryViewModelProvider.notifier).recordSwipe(
+            SwipeHistoryModel(
+              targetUserId: swipedId,
+              targetUserName: swipedProfile['full_name'] ?? 'Người dùng',
+              targetUserAvatar: (swipedProfile['avatar_urls'] != null &&
+                      (swipedProfile['avatar_urls'] as List).isNotEmpty)
+                  ? swipedProfile['avatar_urls'][0] as String
+                  : null,
+              targetUserAge: swipedProfile['age'] as int?,
+              targetUserBio: swipedProfile['bio'] as String?,
+              action: action,
+              timestamp: DateTime.now(),
+            ),
+          );
 
       try {
         final matchId = await ref
             .read(discoveryViewModelProvider(widget.gender).notifier)
-            .recordSwipe(swipedId, isLike);
+            .recordSwipe(
+              swipedId,
+              isLike || isSuperLike,
+              isSuperLike: isSuperLike,
+            );
 
         if (matchId != null && mounted) {
-          _showMatchDialog(swipedProfile, matchId);
+          _showMatchDialog(swipedProfile, matchId, isSuperLike: isSuperLike);
         }
       } catch (e) {
         if (mounted) {
@@ -219,7 +343,11 @@ class _GenderSwipeTabState extends ConsumerState<_GenderSwipeTab>
     }
   }
 
-  void _showMatchDialog(Map<String, dynamic> profile, String matchId) {
+  void _showMatchDialog(
+    Map<String, dynamic> profile,
+    String matchId, {
+    bool isSuperLike = false,
+  }) {
     final avatarUrl =
         (profile['avatar_urls'] != null &&
             (profile['avatar_urls'] as List).isNotEmpty)
@@ -240,9 +368,9 @@ class _GenderSwipeTabState extends ConsumerState<_GenderSwipeTab>
               ShaderMask(
                 shaderCallback: (bounds) =>
                     AppColors.primaryGradient.createShader(bounds),
-                child: const Text(
-                  '🎉 It\'s a Match!',
-                  style: TextStyle(
+                child: Text(
+                  isSuperLike ? '🌟 Super Match!' : '🎉 It\'s a Match!',
+                  style: const TextStyle(
                     fontSize: 26,
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
@@ -262,7 +390,9 @@ class _GenderSwipeTabState extends ConsumerState<_GenderSwipeTab>
                 ),
               const SizedBox(height: 12),
               Text(
-                'Bạn và $name cùng thích nhau!',
+                isSuperLike
+                    ? 'Bạn và $name đã tương hợp bằng Super Like! ⭐'
+                    : 'Bạn và $name cùng thích nhau!',
                 textAlign: TextAlign.center,
                 style: const TextStyle(fontSize: 16),
               ),
@@ -353,16 +483,22 @@ class _GenderSwipeTabState extends ConsumerState<_GenderSwipeTab>
   }
 
   Widget _buildCard(Map<String, dynamic> profile) {
+    final whoLikedUserIds = ref.watch(whoLikedMeUserIdsProvider);
+    final isLikedMe = whoLikedUserIds.contains(profile['id']);
+
     return _ProfileSwipeCard(
       profile: profile,
+      isLikedMe: isLikedMe,
       onOpenProfile: () {
         Navigator.push(
           context,
           MaterialPageRoute(
             builder: (_) => ViewProfileScreen(
               profile: profile,
+              isLikedMe: isLikedMe,
               onLike: () => _controller.swipeRight(),
               onNope: () => _controller.swipeLeft(),
+              onSuperLike: () => _controller.swipeUp(),
             ),
           ),
         );
@@ -372,7 +508,7 @@ class _GenderSwipeTabState extends ConsumerState<_GenderSwipeTab>
 
   Widget _buildBottomButtons() {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 16),
+      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
@@ -381,6 +517,56 @@ class _GenderSwipeTabState extends ConsumerState<_GenderSwipeTab>
             color: Colors.redAccent,
             onPressed: () => _controller.swipeLeft(),
             label: 'Bỏ qua',
+          ),
+          _buildActionButton(
+            icon: Icons.replay_rounded,
+            color: const Color(0xFFFFB300),
+            onPressed: () async {
+              final rewound = await ref
+                  .read(swipeHistoryViewModelProvider.notifier)
+                  .rewindLastSwipe();
+              if (rewound != null && mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    backgroundColor: const Color(0xFF2E7D32),
+                    content: Text(
+                      'Đã hoàn tác lượt quẹt với ${rewound.targetUserName}!',
+                    ),
+                    action: SnackBarAction(
+                      textColor: Colors.white,
+                      label: 'Lịch sử',
+                      onPressed: () => context.push('/history-rewind'),
+                    ),
+                  ),
+                );
+                // Đưa thẻ vừa hoàn tác lên đầu danh sách để hiển thị lại ngay
+                setState(() {
+                  _profiles.insert(0, {
+                    'id': rewound.targetUserId,
+                    'full_name': rewound.targetUserName,
+                    'avatar_urls': rewound.targetUserAvatar != null
+                        ? [rewound.targetUserAvatar!]
+                        : [],
+                    'age': rewound.targetUserAge,
+                    'bio': rewound.targetUserBio,
+                    'gender': widget.gender,
+                  });
+                });
+              } else if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Không có lượt quẹt nào gần đây để hoàn tác.'),
+                  ),
+                );
+              }
+            },
+            label: 'Hoàn tác',
+          ),
+          _buildActionButton(
+            icon: Icons.star_rounded,
+            color: const Color(0xFF03A9F4),
+            onPressed: () => _controller.swipeUp(),
+            label: 'Super Like',
           ),
           _buildActionButton(
             icon: Icons.favorite_rounded,
@@ -444,9 +630,14 @@ class _GenderSwipeTabState extends ConsumerState<_GenderSwipeTab>
 
 class _ProfileSwipeCard extends StatefulWidget {
   final Map<String, dynamic> profile;
+  final bool isLikedMe;
   final VoidCallback onOpenProfile;
 
-  const _ProfileSwipeCard({required this.profile, required this.onOpenProfile});
+  const _ProfileSwipeCard({
+    required this.profile,
+    this.isLikedMe = false,
+    required this.onOpenProfile,
+  });
 
   @override
   State<_ProfileSwipeCard> createState() => _ProfileSwipeCardState();
@@ -574,6 +765,46 @@ class _ProfileSwipeCardState extends State<_ProfileSwipeCard> {
                         ],
                       ),
                     ),
+                  ),
+                ),
+              ),
+
+            // Floating badge: "ĐÃ THÍCH BẠN" (Gold flame/star)
+            if (widget.isLikedMe)
+              Positioned(
+                top: 16,
+                left: 16,
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFFFFD700), Color(0xFFFFA000)],
+                    ),
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFFFFD700).withValues(alpha: 0.4),
+                        blurRadius: 8,
+                        spreadRadius: 1,
+                      ),
+                    ],
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.star_rounded, color: Colors.white, size: 16),
+                      SizedBox(width: 4),
+                      Text(
+                        'ĐÃ THÍCH BẠN',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 0.8,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),

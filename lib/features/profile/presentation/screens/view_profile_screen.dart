@@ -4,14 +4,18 @@ import '../../../../core/theme/app_colors.dart';
 /// Màn hình xem profile của người khác (hiện ra khi ấn vào thẻ quẹt)
 class ViewProfileScreen extends StatelessWidget {
   final Map<String, dynamic> profile;
+  final bool isLikedMe;
   final VoidCallback? onLike;
   final VoidCallback? onNope;
+  final VoidCallback? onSuperLike;
 
   const ViewProfileScreen({
     super.key,
     required this.profile,
+    this.isLikedMe = false,
     this.onLike,
     this.onNope,
+    this.onSuperLike,
   });
 
   @override
@@ -37,7 +41,7 @@ class ViewProfileScreen extends StatelessWidget {
             backgroundColor: AppColors.primary,
             leading: Container(
               margin: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
+              decoration: const BoxDecoration(
                 color: Colors.black26,
                 shape: BoxShape.circle,
               ),
@@ -73,7 +77,7 @@ class ViewProfileScreen extends StatelessWidget {
                     ),
                   ),
 
-                  // Tên + tuổi
+                  // Tên + tuổi + Huy hiệu Đã thích bạn
                   Positioned(
                     bottom: 20,
                     left: 20,
@@ -81,6 +85,39 @@ class ViewProfileScreen extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        if (isLikedMe)
+                          Container(
+                            margin: const EdgeInsets.only(bottom: 8),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 4),
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(
+                                colors: [Color(0xFFFFD700), Color(0xFFFFA000)],
+                              ),
+                              borderRadius: BorderRadius.circular(20),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color(0xFFFFD700).withValues(alpha: 0.4),
+                                  blurRadius: 6,
+                                ),
+                              ],
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.star, color: Colors.white, size: 14),
+                                SizedBox(width: 4),
+                                Text(
+                                  'Đã thích bạn',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         Text(
                           age != null ? '$name, $age' : name,
                           style: const TextStyle(
@@ -162,8 +199,8 @@ class ViewProfileScreen extends StatelessWidget {
                     const SizedBox(height: 32),
                   ],
 
-                  // Nút Like / Nope (nếu có callback)
-                  if (onLike != null || onNope != null) ...[
+                  // Nút Like / Nope / Super Like
+                  if (onLike != null || onNope != null || onSuperLike != null) ...[
                     Row(
                       children: [
                         if (onNope != null)
@@ -188,7 +225,25 @@ class ViewProfileScreen extends StatelessWidget {
                               },
                             ),
                           ),
-                        if (onLike != null && onNope != null)
+                        if (onSuperLike != null) ...[
+                          const SizedBox(width: 8),
+                          ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF03A9F4),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(30)),
+                            ),
+                            onPressed: () {
+                              Navigator.pop(context);
+                              onSuperLike?.call();
+                            },
+                            child: const Icon(Icons.star_rounded,
+                                color: Colors.white, size: 24),
+                          ),
+                          const SizedBox(width: 8),
+                        ] else if (onNope != null && onLike != null)
                           const SizedBox(width: 12),
                         if (onLike != null)
                           Expanded(
