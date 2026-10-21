@@ -224,7 +224,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                               labelStyle: TextStyle(
                                 color: isSelected
                                     ? AppColors.primary
-                                    : Colors.black87,
+                                    : Theme.of(context).colorScheme.onSurface,
                                 fontWeight: isSelected
                                     ? FontWeight.bold
                                     : FontWeight.normal,
@@ -267,10 +267,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   Widget _buildOpenerOption(String text, BuildContext sheetCtx) {
     return Card(
       elevation: 0,
-      color: Colors.grey[50],
+      color: Theme.of(sheetCtx).colorScheme.surfaceContainerHighest,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: ListTile(
-        title: Text(text, style: const TextStyle(fontSize: 14)),
+        title: Text(text, style: TextStyle(
+            fontSize: 14,
+            color: Theme.of(sheetCtx).colorScheme.onSurface,
+          )),
         trailing: const Icon(
           Icons.send_rounded,
           color: AppColors.primary,
@@ -316,7 +319,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                           : isOptimistic
                           ? AppColors.primary.withValues(alpha: 0.75)
                           : AppColors.primary)
-                    : Colors.grey[200],
+                    : Theme.of(context).colorScheme.surfaceContainerHighest,
                 borderRadius: BorderRadius.only(
                   topLeft: const Radius.circular(18),
                   topRight: const Radius.circular(18),
@@ -327,7 +330,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               child: Text(
                 msg['content'],
                 style: TextStyle(
-                  color: isMe ? Colors.white : Colors.black87,
+                  color: isMe ? Colors.white : Theme.of(context).colorScheme.onSurface,
                   fontSize: 15,
                 ),
               ),
@@ -407,7 +410,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             children: [
               CircleAvatar(
                 radius: 20,
-                backgroundColor: Colors.grey[200],
+                backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
                 backgroundImage: avatarUrl != null
                     ? NetworkImage(avatarUrl)
                     : null,
@@ -555,7 +558,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).colorScheme.surface,
         boxShadow: [
           BoxShadow(
             color: Colors.grey.withValues(alpha: 0.15),
@@ -588,7 +591,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                     borderSide: BorderSide.none,
                   ),
                   filled: true,
-                  fillColor: Colors.grey[100],
+                  fillColor: Theme.of(context).colorScheme.surfaceContainerHighest,
                   contentPadding: const EdgeInsets.symmetric(
                     horizontal: 16,
                     vertical: 10,

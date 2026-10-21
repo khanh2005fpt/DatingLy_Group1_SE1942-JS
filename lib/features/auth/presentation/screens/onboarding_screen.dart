@@ -216,7 +216,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     final stepLabels = ['Cơ bản', 'Tiểu sử', 'Sở thích', 'Ảnh'];
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: null,
       body: SafeArea(
         child: Column(
           children: [
@@ -241,7 +241,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                             borderRadius: BorderRadius.circular(4),
                             color: isActive
                                 ? AppColors.primary
-                                : Colors.grey[200],
+                                : Colors.grey.withValues(alpha: 0.25),
                           ),
                         ),
                       );
@@ -448,7 +448,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                 ),
               ),
               filled: true,
-              fillColor: const Color(0xFFFAFAFA),
+              fillColor: Colors.grey.withValues(alpha: 0.12),
             ),
           ),
           const SizedBox(height: 16),
@@ -518,7 +518,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                   label: Text(
                     tag,
                     style: TextStyle(
-                      color: isSelected ? AppColors.primary : Colors.black87,
+                      color: isSelected ? AppColors.primary : null,
                       fontWeight: isSelected
                           ? FontWeight.bold
                           : FontWeight.normal,
@@ -532,7 +532,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                     color: isSelected ? AppColors.primary : Colors.grey[300]!,
                     width: isSelected ? 1.5 : 1,
                   ),
-                  backgroundColor: Colors.white,
+                  backgroundColor: null,
                   elevation: isSelected ? 0 : 0,
                   onSelected: (v) => setState(() {
                     if (v) {
@@ -572,7 +572,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                     ),
                     isDense: true,
                     filled: true,
-                    fillColor: const Color(0xFFFAFAFA),
+                    fillColor: Colors.grey.withValues(alpha: 0.12),
                   ),
                   onSubmitted: (_) => _addCustomTag(),
                   textInputAction: TextInputAction.done,
@@ -639,7 +639,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                             : Colors.grey[300]!,
                         width: 3,
                       ),
-                      color: Colors.grey[100],
+                      color: Colors.grey.withValues(alpha: 0.12),
                     ),
                     child: ClipOval(
                       child: _avatarBytes != null
@@ -716,7 +716,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                   onTap: _pickPhoto,
                   child: Container(
                     decoration: BoxDecoration(
-                      color: Colors.grey[50],
+                      color: Colors.grey.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
                         color: AppColors.primary.withValues(alpha: 0.3),
@@ -810,7 +810,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           style: const TextStyle(
             fontSize: 24,
             fontWeight: FontWeight.bold,
-            color: AppColors.textPrimary,
+            color: null,
           ),
         ),
         const SizedBox(height: 6),
@@ -827,7 +827,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     style: const TextStyle(
       fontWeight: FontWeight.w600,
       fontSize: 14,
-      color: AppColors.textPrimary,
+      color: null,
     ),
   );
 
@@ -840,6 +840,6 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       borderSide: const BorderSide(color: AppColors.primary, width: 2),
     ),
     filled: true,
-    fillColor: const Color(0xFFFAFAFA),
+    fillColor: Colors.grey.withValues(alpha: 0.12),
   );
 }

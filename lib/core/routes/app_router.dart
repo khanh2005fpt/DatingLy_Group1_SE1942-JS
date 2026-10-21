@@ -4,6 +4,8 @@ import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/auth/presentation/screens/register_screen.dart';
 import '../../features/auth/presentation/screens/onboarding_screen.dart';
 import '../../features/discovery/presentation/screens/discovery_screen.dart';
+import '../../features/discovery/presentation/screens/discovery_filter_screen.dart';
+import '../../features/discovery/presentation/screens/who_liked_you_screen.dart';
 import '../../features/chat/presentation/screens/match_list_screen.dart';
 import '../../features/chat/presentation/screens/chat_screen.dart';
 import '../../features/chat/presentation/screens/mini_game_screen.dart';
@@ -38,6 +40,14 @@ class AppRouter {
       GoRoute(
         path: '/discovery',
         builder: (context, state) => const DiscoveryScreen(),
+      ),
+      GoRoute(
+        path: '/likes',
+        builder: (context, state) => const WhoLikedYouScreen(),
+      ),
+      GoRoute(
+        path: '/discovery/filter',
+        builder: (context, state) => const DiscoveryFilterScreen(),
       ),
       GoRoute(
         path: '/matches',

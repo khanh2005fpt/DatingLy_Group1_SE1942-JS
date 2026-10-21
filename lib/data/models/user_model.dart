@@ -1,5 +1,23 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+/// Câu hỏi + câu trả lời hiển thị trên hồ sơ (prompt).
+class ProfilePrompt {
+  final String question;
+  final String answer;
+
+  const ProfilePrompt({required this.question, required this.answer});
+
+  Map<String, dynamic> toMap() => {'question': question, 'answer': answer};
+
+  static ProfilePrompt? tryParse(dynamic raw) {
+    if (raw is! Map) return null;
+    final q = raw['question']?.toString() ?? '';
+    final a = raw['answer']?.toString() ?? '';
+    if (q.isEmpty || a.isEmpty) return null;
+    return ProfilePrompt(question: q, answer: a);
+  }
+}
+
 /// User Model trong kiến trúc MVVM
 class UserModel {
   final String id;
@@ -11,6 +29,8 @@ class UserModel {
   final List<String> tags;
   final List<String> avatarUrls;
   final String? fcmToken;
+  final GeoPoint? location;
+  final List<ProfilePrompt> prompts;
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
@@ -24,12 +44,13 @@ class UserModel {
     this.tags = const [],
     this.avatarUrls = const [],
     this.fcmToken,
+    this.location,
+    this.prompts = const [],
     this.createdAt,
     this.updatedAt,
   });
 
-  String get mainAvatarUrl =>
-      avatarUrls.isNotEmpty ? avatarUrls.first : '';
+  String get mainAvatarUrl => avatarUrls.isNotEmpty ? avatarUrls.first : '';
 
   UserModel copyWith({
     String? id,
@@ -41,6 +62,8 @@ class UserModel {
     List<String>? tags,
     List<String>? avatarUrls,
     String? fcmToken,
+    GeoPoint? location,
+    List<ProfilePrompt>? prompts,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -54,6 +77,8 @@ class UserModel {
       tags: tags ?? this.tags,
       avatarUrls: avatarUrls ?? this.avatarUrls,
       fcmToken: fcmToken ?? this.fcmToken,
+      location: location ?? this.location,
+      prompts: prompts ?? this.prompts,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -70,7 +95,11 @@ class UserModel {
       'tags': tags,
       'avatar_urls': avatarUrls,
       if (fcmToken != null) 'fcm_token': fcmToken,
-      'created_at': createdAt != null ? Timestamp.fromDate(createdAt!) : FieldValue.serverTimestamp(),
+      if (location != null) 'location': location,
+      if (prompts.isNotEmpty) 'prompts': prompts.map((p) => p.toMap()).toList(),
+      'created_at': createdAt != null
+          ? Timestamp.fromDate(createdAt!)
+          : FieldValue.serverTimestamp(),
       'updated_at': FieldValue.serverTimestamp(),
     };
   }
@@ -89,8 +118,11 @@ class UserModel {
       age: (map['age'] as num?)?.toInt() ?? 18,
       gender: map['gender'] as String? ?? 'other',
       bio: map['bio'] as String? ?? '',
-      tags: (map['tags'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
-      avatarUrls: (map['avatar_urls'] as List<dynamic>?)
+      tags:
+          (map['tags'] as List<dynamic>?)?.map((e) => e.toString()).toList() ??
+          [],
+      avatarUrls:
+          (map['avatar_urls'] as List<dynamic>?)
               ?.map((e) => e.toString())
               .toList() ??
           (map['avatarUrls'] as List<dynamic>?)
@@ -98,6 +130,15 @@ class UserModel {
               .toList() ??
           [],
       fcmToken: map['fcm_token'] as String?,
+      location: map['location'] is GeoPoint
+          ? map['location'] as GeoPoint
+          : null,
+      prompts:
+          (map['prompts'] as List<dynamic>?)
+              ?.map(ProfilePrompt.tryParse)
+              .whereType<ProfilePrompt>()
+              .toList() ??
+          [],
       createdAt: parseDate(map['created_at']),
       updatedAt: parseDate(map['updated_at']),
     );

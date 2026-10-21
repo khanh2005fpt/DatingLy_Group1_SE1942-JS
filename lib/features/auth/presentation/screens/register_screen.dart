@@ -90,7 +90,17 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     final authState = ref.watch(authViewModelProvider);
     final isLoading = authState.isLoading;
 
+    final media = MediaQuery.of(context);
+    final keyboardHeight = media.viewInsets.bottom;
+    final keyboardOpen = keyboardHeight > 0;
+    // Khi bàn phím mở: panel trắng đẩy lên sát phía trên bàn phím và ẩn hero
+    // để tránh đè lên tiêu đề.
+    final panelHeight = keyboardOpen
+        ? media.size.height - keyboardHeight - media.padding.top - 16
+        : media.size.height * 0.70;
+
     return Scaffold(
+      resizeToAvoidBottomInset: false,
       body: Stack(
         children: [
           Container(
@@ -125,7 +135,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           Align(
             alignment: Alignment.bottomCenter,
             child: Container(
-              height: MediaQuery.of(context).size.height * 0.70,
+              margin: EdgeInsets.only(bottom: keyboardHeight),
+              height: panelHeight,
               decoration: const BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.only(
@@ -143,7 +154,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       style: TextStyle(
                         fontSize: 26,
                         fontWeight: FontWeight.bold,
-                        color: AppColors.textPrimary,
+                        color: null,
                       ),
                     ),
                     const SizedBox(height: 6),
@@ -336,13 +347,14 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               ),
             ),
           ),
-          SafeArea(
-            bottom: false,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(24, 12, 24, 0),
-              child: const BrandHero(compact: true),
+          if (!keyboardOpen)
+            const SafeArea(
+              bottom: false,
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(24, 12, 24, 0),
+                child: BrandHero(compact: true),
+              ),
             ),
-          ),
         ],
       ),
     );
@@ -369,7 +381,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         borderSide: const BorderSide(color: AppColors.error),
       ),
       filled: true,
-      fillColor: const Color(0xFFFAFAFA),
+      fillColor: Colors.grey.withValues(alpha: 0.12),
     );
   }
 }

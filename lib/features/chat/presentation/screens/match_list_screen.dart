@@ -41,7 +41,7 @@ class MatchListScreen extends ConsumerWidget {
           ),
         ),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          icon: const Icon(Icons.arrow_back),
           onPressed: () => context.go('/discovery'),
         ),
       ),
@@ -110,7 +110,7 @@ class MatchListScreen extends ConsumerWidget {
                   children: [
                     CircleAvatar(
                       radius: 28,
-                      backgroundColor: Colors.grey[200],
+                      backgroundColor: Colors.grey.withValues(alpha: 0.25),
                       backgroundImage: (avatar != null && avatar.isNotEmpty)
                           ? NetworkImage(avatar)
                           : null,
@@ -153,7 +153,7 @@ class MatchListScreen extends ConsumerWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    color: unread > 0 ? AppColors.textPrimary : Colors.grey[600],
+                    color: unread > 0 ? null : Colors.grey[600],
                     fontWeight:
                         unread > 0 ? FontWeight.w600 : FontWeight.normal,
                   ),

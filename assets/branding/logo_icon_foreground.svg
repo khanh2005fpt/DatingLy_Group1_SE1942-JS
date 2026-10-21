@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <linearGradient id="heart" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0" stop-color="#FD297B"/><stop offset="1" stop-color="#FF655B"/>
+    </linearGradient>
+  </defs>
+  <g transform="translate(512 512) scale(0.66) translate(-540 -520)">
+    <g transform="rotate(14 560 540)">
+      <rect x="352" y="196" width="400" height="560" rx="64" fill="#FFFFFF" opacity="0.5"/>
+    </g>
+    <g transform="rotate(-10 470 560)">
+      <rect x="270" y="250" width="420" height="580" rx="70" fill="#FFFFFF"/>
+      <path d="M480 640 C 400 580, 350 536, 350 478 C 350 434, 384 404, 424 404 C 452 404, 472 418, 480 438 C 488 418, 508 404, 536 404 C 576 404, 610 434, 610 478 C 610 536, 560 580, 480 640 Z" fill="url(#heart)"/>
+      <rect x="330" y="702" width="200" height="26" rx="13" fill="#FFD1DF"/>
+      <rect x="330" y="746" width="130" height="20" rx="10" fill="#FFE4EC"/>
+    </g>
+    <path d="M780 300 l16 40 l40 16 l-40 16 l-16 40 l-16 -40 l-40 -16 l40 -16 z" fill="#FFFFFF"/>
+  </g>
+</svg>

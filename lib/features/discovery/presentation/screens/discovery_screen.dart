@@ -6,7 +6,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/app_branding.dart';
 import '../../../../data/models/user_model.dart';
 import '../viewmodels/discovery_view_model.dart';
-import '../../../profile/presentation/viewmodels/preferences_view_model.dart';
+import 'who_liked_you_screen.dart';
 import '../../../profile/presentation/screens/view_profile_screen.dart';
 
 class DiscoveryScreen extends ConsumerStatefulWidget {
@@ -16,41 +16,179 @@ class DiscoveryScreen extends ConsumerStatefulWidget {
   ConsumerState<DiscoveryScreen> createState() => _DiscoveryScreenState();
 }
 
-class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen>
-    with SingleTickerProviderStateMixin {
+class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
+  final AppinioSwiperController _controller = AppinioSwiperController();
 
-  late TabController _tabController;
+  /// Số thẻ đã quẹt (= index thẻ trên cùng trong `state.cards`).
+  int _consumed = 0;
 
-  final List<Map<String, String>> _tabs = [
-    {'label': '♀ Nữ', 'gender': 'Nữ'},
-    {'label': '♂ Nam', 'gender': 'Nam'},
-    {'label': '⚧ Khác', 'gender': 'Khác'},
-  ];
-
-  @override
-  void initState() {
-    super.initState();
-    // Khôi phục tab giới tính đã chọn lần trước từ SharedPreferences
-    final saved = ref.read(preferencesViewModelProvider).genderFilter;
-    final initial = _tabs.indexWhere((t) => t['gender'] == saved);
-    _tabController = TabController(
-      length: _tabs.length,
-      vsync: this,
-      initialIndex: initial < 0 ? 0 : initial,
-    );
-    _tabController.addListener(() {
-      if (!_tabController.indexIsChanging) {
-        ref
-            .read(preferencesViewModelProvider.notifier)
-            .setGenderFilter(_tabs[_tabController.index]['gender']);
-      }
-    });
-  }
+  /// Nhãn LIKE / NOPE / SUPER LIKE hiện ngắn khi thẻ bay đi.
+  SwipeAction? _stamp;
 
   @override
   void dispose() {
-    _tabController.dispose();
+    _controller.dispose();
     super.dispose();
+  }
+
+  SwipeAction? _actionFor(AxisDirection d) => switch (d) {
+        AxisDirection.right => SwipeAction.like,
+        AxisDirection.left => SwipeAction.nope,
+        AxisDirection.up => SwipeAction.superLike,
+        AxisDirection.down => null,
+      };
+
+  void _onSwipeBegin(int previousIndex, int targetIndex, SwiperActivity a) {
+    if (a is! Swipe) return;
+    final action = _actionFor(a.direction);
+    if (action == null) return;
+    setState(() => _stamp = action);
+    Future.delayed(const Duration(milliseconds: 450), () {
+      if (mounted) setState(() => _stamp = null);
+    });
+  }
+
+  Future<void> _onSwipeEnd(
+    int previousIndex,
+    int targetIndex,
+    SwiperActivity activity,
+  ) async {
+    if (activity is! Swipe) return;
+    final action = _actionFor(activity.direction);
+    if (action == null) return;
+
+    final cards = ref.read(discoveryViewModelProvider).cards;
+    if (previousIndex >= cards.length) return;
+    final user = cards[previousIndex];
+
+    setState(() => _consumed = targetIndex);
+    final vm = ref.read(discoveryViewModelProvider.notifier);
+    vm.onCardConsumed(cards.length - targetIndex);
+
+    try {
+      final matchId = await vm.recordSwipe(user.id, action);
+      if (matchId != null && mounted) _showMatchDialog(user, matchId);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Lỗi khi ghi nhận swipe: $e')));
+      }
+    }
+  }
+
+  void _openFilter() => context.push('/discovery/filter');
+
+  void _openProfile(UserModel user) {
+    final vm = ref.read(discoveryViewModelProvider.notifier);
+    final state = ref.read(discoveryViewModelProvider);
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ViewProfileScreen(
+          profile: user.toMap()..['id'] = user.id,
+          distanceKm: vm.distanceTo(user),
+          myTags: state.myTags,
+          onLike: () => _controller.swipeRight(),
+          onNope: () => _controller.swipeLeft(),
+          onSuperLike: () => _controller.swipeUp(),
+        ),
+      ),
+    );
+  }
+
+  void _showMatchDialog(UserModel user, String matchId) {
+    final avatarUrl = user.mainAvatarUrl.isEmpty ? null : user.mainAvatarUrl;
+    final name = user.fullName.isEmpty ? 'người ấy' : user.fullName;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogCtx) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ShaderMask(
+                shaderCallback: (bounds) =>
+                    AppColors.primaryGradient.createShader(bounds),
+                child: const Text(
+                  '🎉 It\'s a Match!',
+                  style: TextStyle(
+                    fontSize: 26,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              if (avatarUrl != null)
+                CircleAvatar(
+                  radius: 45,
+                  backgroundImage: NetworkImage(avatarUrl),
+                )
+              else
+                const CircleAvatar(
+                  radius: 45,
+                  child: Icon(Icons.person, size: 45),
+                ),
+              const SizedBox(height: 12),
+              Text(
+                'Bạn và $name cùng thích nhau!',
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 16),
+              ),
+              const SizedBox(height: 20),
+              // Xếp dọc, full chiều rộng để chữ không bị bẻ dòng
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 14),
+                  ),
+                  icon: const Icon(Icons.chat_bubble_outline, size: 20),
+                  label: const Text(
+                    'Nhắn tin ngay',
+                    maxLines: 1,
+                    softWrap: false,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  onPressed: () {
+                    Navigator.pop(dialogCtx);
+                    context.push(
+                      '/chat/$matchId',
+                      extra: {
+                        'otherUserName': name,
+                        'otherAvatarUrl': avatarUrl,
+                        'otherBio': user.bio,
+                        'otherTags': user.tags,
+                      },
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                child: TextButton(
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                  onPressed: () => Navigator.pop(dialogCtx),
+                  child: const Text(
+                    'Tiếp tục quẹt',
+                    maxLines: 1,
+                    softWrap: false,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -71,6 +209,28 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen>
           onPressed: () => context.push('/profile'),
         ),
         actions: [
+          Consumer(
+            builder: (context, ref, _) {
+              final likes = ref.watch(whoLikedMeProvider).value?.length ?? 0;
+              return Badge(
+                isLabelVisible: likes > 0,
+                label: Text(likes > 9 ? '9+' : '$likes'),
+                child: IconButton(
+                  tooltip: 'Ai đã thích bạn',
+                  icon: const Icon(Icons.favorite_border, color: Colors.grey),
+                  onPressed: () async {
+                    await context.push('/likes');
+                    ref.invalidate(whoLikedMeProvider);
+                  },
+                ),
+              );
+            },
+          ),
+          IconButton(
+            tooltip: 'Bộ lọc',
+            icon: const Icon(Icons.tune_rounded, color: Colors.grey),
+            onPressed: _openFilter,
+          ),
           Consumer(
             builder: (context, ref, _) {
               final unreadCount = ref.watch(matchCountProvider);
@@ -114,236 +274,84 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen>
             },
           ),
         ],
-        bottom: TabBar(
-          controller: _tabController,
-          labelColor: AppColors.primary,
-          unselectedLabelColor: Colors.grey,
-          indicatorColor: AppColors.primary,
-          indicatorWeight: 3,
-          labelStyle: const TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 15,
-          ),
-          tabs: _tabs.map((t) => Tab(text: t['label'])).toList(),
-        ),
       ),
-      body: TabBarView(
-        controller: _tabController,
-        children: _tabs
-            .map(
-              (t) => _GenderSwipeTab(gender: t['gender']!),
-            )
-            .toList(),
-      ),
-    );
-  }
-}
-
-/// Widget riêng cho từng tab giới tính — mỗi tab có stack thẻ riêng
-class _GenderSwipeTab extends ConsumerStatefulWidget {
-  final String gender;
-
-  const _GenderSwipeTab({required this.gender});
-
-  @override
-  ConsumerState<_GenderSwipeTab> createState() => _GenderSwipeTabState();
-}
-
-class _GenderSwipeTabState extends ConsumerState<_GenderSwipeTab>
-    with AutomaticKeepAliveClientMixin {
-  final AppinioSwiperController _controller = AppinioSwiperController();
-  List<Map<String, dynamic>> _profiles = [];
-  bool _isLoading = true;
-
-  @override
-  bool get wantKeepAlive => true; // Giữ state khi chuyển tab
-
-  @override
-  void initState() {
-    super.initState();
-    // Riverpod không cho đổi provider trong initState -> hoãn sau khi dựng xong
-    Future.microtask(_loadProfiles);
-  }
-
-  Future<void> _loadProfiles() async {
-    if (!mounted) return;
-    setState(() => _isLoading = true);
-    final provider = discoveryViewModelProvider(widget.gender);
-
-    try {
-      await ref.read(provider.notifier).loadCandidates();
-    } catch (e) {
-      debugPrint('Discovery load error: $e');
-    }
-    if (!mounted) return;
-
-    final result = ref.read(provider);
-    if (result.errorMessage != null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(result.errorMessage!)));
-    }
-    setState(() {
-      _profiles = result.candidates
-          .map((UserModel u) => u.toMap())
-          .toList();
-      _isLoading = false;
-    });
-  }
-
-  Future<void> _onSwipeEnd(
-    int previousIndex,
-    int targetIndex,
-    SwiperActivity activity,
-  ) async {
-    if (activity is Swipe) {
-      final isLike = activity.direction == AxisDirection.right;
-      final swipedProfile = _profiles[previousIndex];
-      final swipedId = swipedProfile['id'];
-
-      try {
-        final matchId = await ref
-            .read(discoveryViewModelProvider(widget.gender).notifier)
-            .recordSwipe(swipedId, isLike);
-
-        if (matchId != null && mounted) {
-          _showMatchDialog(swipedProfile, matchId);
-        }
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text('Lỗi khi ghi nhận swipe: $e')));
-        }
-      }
-    }
-  }
-
-  void _showMatchDialog(Map<String, dynamic> profile, String matchId) {
-    final avatarUrl =
-        (profile['avatar_urls'] != null &&
-            (profile['avatar_urls'] as List).isNotEmpty)
-        ? profile['avatar_urls'][0] as String
-        : null;
-    final name = profile['full_name'] ?? 'người ấy';
-
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (dialogCtx) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ShaderMask(
-                shaderCallback: (bounds) =>
-                    AppColors.primaryGradient.createShader(bounds),
-                child: const Text(
-                  '🎉 It\'s a Match!',
-                  style: TextStyle(
-                    fontSize: 26,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              if (avatarUrl != null)
-                CircleAvatar(
-                  radius: 45,
-                  backgroundImage: NetworkImage(avatarUrl),
-                )
-              else
-                const CircleAvatar(
-                  radius: 45,
-                  child: Icon(Icons.person, size: 45),
-                ),
-              const SizedBox(height: 12),
-              Text(
-                'Bạn và $name cùng thích nhau!',
-                textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 16),
-              ),
-              const SizedBox(height: 20),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => Navigator.pop(dialogCtx),
-                      child: const Text('Để sau'),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      icon: const Icon(Icons.chat_bubble_outline, size: 18),
-                      label: const Text('Nhắn tin'),
-                      onPressed: () {
-                        Navigator.pop(dialogCtx);
-                        context.push(
-                          '/chat/$matchId',
-                          extra: {
-                            'otherUserName': name,
-                            'otherAvatarUrl': avatarUrl,
-                            'otherBio': profile['bio'],
-                            'otherTags': profile['tags'],
-                          },
-                        );
-                      },
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
+      body: _buildBody(),
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    super.build(context);
+  Widget _buildBody() {
+    final state = ref.watch(discoveryViewModelProvider);
 
-    if (_isLoading) {
+    if (state.isLoading) {
+      // Reset vị trí khi tải lại (đổi filter / refresh)
+      _consumed = 0;
       return const Center(
         child: CircularProgressIndicator(color: AppColors.primary),
       );
     }
 
-    if (_profiles.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.people_outline, size: 80, color: Colors.grey[400]),
-            const SizedBox(height: 16),
-            Text(
-              'Chưa có hồ sơ ${widget.gender} nào.',
-              style: TextStyle(fontSize: 16, color: Colors.grey[600]),
-            ),
-            const SizedBox(height: 20),
-            ElevatedButton.icon(
-              onPressed: _loadProfiles,
-              icon: const Icon(Icons.refresh),
-              label: const Text('Tải lại'),
-            ),
-          ],
-        ),
+    if (state.errorMessage != null && state.cards.isEmpty) {
+      return _messageView(
+        icon: Icons.error_outline,
+        text: state.errorMessage!,
+        primaryLabel: 'Thử lại',
+        onPrimary: () =>
+            ref.read(discoveryViewModelProvider.notifier).reload(),
       );
     }
 
+    final exhausted = _consumed >= state.cards.length;
+    if (exhausted) {
+      if (state.hasMore || state.isLoadingMore) {
+        return const Center(
+          child: CircularProgressIndicator(color: AppColors.primary),
+        );
+      }
+      return _messageView(
+        icon: Icons.people_outline,
+        text: 'Bạn đã xem hết người phù hợp.\nThử nới rộng bộ lọc nhé!',
+        primaryLabel: 'Chỉnh bộ lọc',
+        onPrimary: _openFilter,
+        secondaryLabel: 'Tải lại',
+        onSecondary: () =>
+            ref.read(discoveryViewModelProvider.notifier).reload(),
+      );
+    }
+
+    final vm = ref.read(discoveryViewModelProvider.notifier);
     return SafeArea(
       child: Column(
         children: [
           Expanded(
-            child: AppinioSwiper(
-              controller: _controller,
-              cardCount: _profiles.length,
-              onSwipeEnd: _onSwipeEnd,
-              cardBuilder: (context, index) => _buildCard(_profiles[index]),
+            child: Stack(
+              children: [
+                AppinioSwiper(
+                  controller: _controller,
+                  cardCount: state.cards.length,
+                  initialIndex: _consumed,
+                  maxAngle: 15,
+                  threshold: 80,
+                  swipeOptions: const SwipeOptions.only(
+                    left: true,
+                    right: true,
+                    up: true,
+                  ),
+                  onSwipeBegin: _onSwipeBegin,
+                  onSwipeEnd: _onSwipeEnd,
+                  cardBuilder: (context, index) {
+                    final user = state.cards[index];
+                    return _SwipeCard(
+                      user: user,
+                      distanceKm: vm.distanceTo(user),
+                      commonTags: user.tags
+                          .where(state.myTags.contains)
+                          .toList(),
+                      onOpenProfile: () => _openProfile(user),
+                    );
+                  },
+                ),
+                if (_stamp != null) _StampOverlay(action: _stamp!),
+              ],
             ),
           ),
           _buildBottomButtons(),
@@ -352,21 +360,34 @@ class _GenderSwipeTabState extends ConsumerState<_GenderSwipeTab>
     );
   }
 
-  Widget _buildCard(Map<String, dynamic> profile) {
-    return _ProfileSwipeCard(
-      profile: profile,
-      onOpenProfile: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => ViewProfileScreen(
-              profile: profile,
-              onLike: () => _controller.swipeRight(),
-              onNope: () => _controller.swipeLeft(),
+  Widget _messageView({
+    required IconData icon,
+    required String text,
+    required String primaryLabel,
+    required VoidCallback onPrimary,
+    String? secondaryLabel,
+    VoidCallback? onSecondary,
+  }) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 80, color: Colors.grey[400]),
+            const SizedBox(height: 16),
+            Text(
+              text,
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 16, color: Colors.grey[600]),
             ),
-          ),
-        );
-      },
+            const SizedBox(height: 20),
+            ElevatedButton(onPressed: onPrimary, child: Text(primaryLabel)),
+            if (secondaryLabel != null)
+              TextButton(onPressed: onSecondary, child: Text(secondaryLabel)),
+          ],
+        ),
+      ),
     );
   }
 
@@ -376,29 +397,35 @@ class _GenderSwipeTabState extends ConsumerState<_GenderSwipeTab>
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          _buildActionButton(
+          _actionButton(
             icon: Icons.close_rounded,
             color: Colors.redAccent,
-            onPressed: () => _controller.swipeLeft(),
             label: 'Bỏ qua',
+            onPressed: () => _controller.swipeLeft(),
           ),
-          _buildActionButton(
+          _actionButton(
+            icon: Icons.star_rounded,
+            color: Colors.blueAccent,
+            label: 'Super Like',
+            onPressed: () => _controller.swipeUp(),
+          ),
+          _actionButton(
             icon: Icons.favorite_rounded,
             color: Colors.greenAccent[700]!,
-            onPressed: () => _controller.swipeRight(),
             label: 'Thích',
             large: true,
+            onPressed: () => _controller.swipeRight(),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildActionButton({
+  Widget _actionButton({
     required IconData icon,
     required Color color,
-    required VoidCallback onPressed,
     required String label,
+    required VoidCallback onPressed,
     bool large = false,
   }) {
     final size = large ? 36.0 : 28.0;
@@ -442,37 +469,72 @@ class _GenderSwipeTabState extends ConsumerState<_GenderSwipeTab>
   }
 }
 
-class _ProfileSwipeCard extends StatefulWidget {
-  final Map<String, dynamic> profile;
-  final VoidCallback onOpenProfile;
-
-  const _ProfileSwipeCard({required this.profile, required this.onOpenProfile});
-
-  @override
-  State<_ProfileSwipeCard> createState() => _ProfileSwipeCardState();
-}
-
-class _ProfileSwipeCardState extends State<_ProfileSwipeCard> {
-  int _currentImageIndex = 0;
-
-  void _nextImage(int maxImages) {
-    if (_currentImageIndex < maxImages - 1) {
-      setState(() => _currentImageIndex++);
-    }
-  }
-
-  void _prevImage() {
-    if (_currentImageIndex > 0) {
-      setState(() => _currentImageIndex--);
-    }
-  }
+/// Nhãn LIKE / NOPE / SUPER LIKE hiện khi thẻ bay đi.
+class _StampOverlay extends StatelessWidget {
+  final SwipeAction action;
+  const _StampOverlay({required this.action});
 
   @override
   Widget build(BuildContext context) {
-    final profile = widget.profile;
-    final List<String> photoUrls = profile['avatar_urls'] != null
-        ? List<String>.from(profile['avatar_urls'])
-        : [];
+    final (text, color, angle) = switch (action) {
+      SwipeAction.like => ('LIKE', Colors.greenAccent[700]!, -0.2),
+      SwipeAction.nope => ('NOPE', Colors.redAccent, 0.2),
+      SwipeAction.superLike => ('SUPER LIKE', Colors.blueAccent, 0.0),
+    };
+    return IgnorePointer(
+      child: Align(
+        alignment: const Alignment(0, -0.6),
+        child: Transform.rotate(
+          angle: angle,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+            decoration: BoxDecoration(
+              border: Border.all(color: color, width: 4),
+              borderRadius: BorderRadius.circular(10),
+              color: Colors.white.withValues(alpha: 0.85),
+            ),
+            child: Text(
+              text,
+              style: TextStyle(
+                color: color,
+                fontSize: 32,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 2,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SwipeCard extends StatefulWidget {
+  final UserModel user;
+  final double? distanceKm;
+  final List<String> commonTags;
+  final VoidCallback onOpenProfile;
+
+  const _SwipeCard({
+    required this.user,
+    required this.distanceKm,
+    required this.commonTags,
+    required this.onOpenProfile,
+  });
+
+  @override
+  State<_SwipeCard> createState() => _SwipeCardState();
+}
+
+class _SwipeCardState extends State<_SwipeCard> {
+  int _currentImageIndex = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    final user = widget.user;
+    final photoUrls = user.avatarUrls;
+    final name = user.fullName.isEmpty ? 'Ẩn danh' : user.fullName;
+    final distance = widget.distanceKm;
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -492,18 +554,14 @@ class _ProfileSwipeCardState extends State<_ProfileSwipeCard> {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            // Ảnh đại diện
             photoUrls.isNotEmpty
                 ? Image.network(
                     photoUrls[_currentImageIndex],
                     fit: BoxFit.cover,
                     errorBuilder: (context, error, stackTrace) => Container(
                       color: Colors.grey[300],
-                      child: const Icon(
-                        Icons.person,
-                        size: 100,
-                        color: Colors.white,
-                      ),
+                      child: const Icon(Icons.person,
+                          size: 100, color: Colors.white),
                     ),
                   )
                 : Container(
@@ -512,7 +570,7 @@ class _ProfileSwipeCardState extends State<_ProfileSwipeCard> {
                     ),
                     child: Center(
                       child: Text(
-                        (profile['full_name'] ?? '?')[0].toUpperCase(),
+                        name[0].toUpperCase(),
                         style: const TextStyle(
                           fontSize: 80,
                           color: Colors.white,
@@ -522,34 +580,39 @@ class _ProfileSwipeCardState extends State<_ProfileSwipeCard> {
                     ),
                   ),
 
-            // Tap detector nửa trái / nửa phải để đổi ảnh (chỉ lấy 70% chiều cao trên cùng)
+            // Tap nửa trái / phải để đổi ảnh (chừa phần thông tin ở dưới)
             if (photoUrls.length > 1)
               Positioned(
                 top: 0,
                 left: 0,
                 right: 0,
-                bottom: 150, // Tránh đè lên phần thông tin ở dưới
+                bottom: 150,
                 child: Row(
                   children: [
                     Expanded(
                       child: GestureDetector(
-                        onTap: _prevImage,
+                        onTap: () {
+                          if (_currentImageIndex > 0) {
+                            setState(() => _currentImageIndex--);
+                          }
+                        },
                         behavior: HitTestBehavior.translucent,
-                        child: Container(),
                       ),
                     ),
                     Expanded(
                       child: GestureDetector(
-                        onTap: () => _nextImage(photoUrls.length),
+                        onTap: () {
+                          if (_currentImageIndex < photoUrls.length - 1) {
+                            setState(() => _currentImageIndex++);
+                          }
+                        },
                         behavior: HitTestBehavior.translucent,
-                        child: Container(),
                       ),
                     ),
                   ],
                 ),
               ),
 
-            // Indicator dots ở trên cùng
             if (photoUrls.length > 1)
               Positioned(
                 top: 12,
@@ -569,16 +632,13 @@ class _ProfileSwipeCardState extends State<_ProfileSwipeCard> {
                             ? Colors.white
                             : Colors.white.withValues(alpha: 0.5),
                         borderRadius: BorderRadius.circular(2),
-                        boxShadow: const [
-                          BoxShadow(color: Colors.black26, blurRadius: 2),
-                        ],
                       ),
                     ),
                   ),
                 ),
               ),
 
-            // Gradient overlay & Info (nhấn vào đây mở profile)
+            // Thông tin (nhấn để mở hồ sơ chi tiết)
             Positioned(
               bottom: 0,
               left: 0,
@@ -587,6 +647,7 @@ class _ProfileSwipeCardState extends State<_ProfileSwipeCard> {
                 onTap: widget.onOpenProfile,
                 behavior: HitTestBehavior.opaque,
                 child: Container(
+                  padding: const EdgeInsets.fromLTRB(20, 48, 20, 20),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: [
@@ -595,83 +656,69 @@ class _ProfileSwipeCardState extends State<_ProfileSwipeCard> {
                       ],
                       begin: Alignment.bottomCenter,
                       end: Alignment.topCenter,
-                      stops: const [0.0, 1.0],
                     ),
                   ),
-                  padding: const EdgeInsets.fromLTRB(24, 60, 24, 24),
                   child: Column(
+                    mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
                         children: [
-                          Expanded(
+                          Flexible(
                             child: Text(
-                              '${profile['full_name'] ?? 'Ẩn danh'}, ${profile['age'] ?? '?'}',
+                              '$name, ${user.age}',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
                                 color: Colors.white,
-                                fontSize: 26,
+                                fontSize: 28,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
                           ),
-                          // Info icon
-                          Container(
-                            padding: const EdgeInsets.all(6),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.2),
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(
-                              Icons.info_outline,
-                              color: Colors.white,
-                              size: 16,
-                            ),
-                          ),
+                          const SizedBox(width: 8),
+                          const Icon(Icons.info_outline,
+                              color: Colors.white70, size: 22),
                         ],
                       ),
-                      if (profile['bio'] != null &&
-                          (profile['bio'] as String).isNotEmpty) ...[
-                        const SizedBox(height: 8),
-                        Text(
-                          profile['bio'],
-                          style: const TextStyle(
-                            color: Colors.white70,
-                            fontSize: 15,
+                      if (distance != null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.location_on_outlined,
+                                  color: Colors.white70, size: 16),
+                              const SizedBox(width: 4),
+                              Text(
+                                distance < 1
+                                    ? 'Dưới 1 km'
+                                    : '${distance.round()} km',
+                                style: const TextStyle(
+                                    color: Colors.white70, fontSize: 14),
+                              ),
+                            ],
                           ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
                         ),
-                      ],
-                      if (profile['tags'] != null &&
-                          (profile['tags'] as List).isNotEmpty) ...[
+                      if (widget.commonTags.isNotEmpty) ...[
                         const SizedBox(height: 10),
                         Wrap(
                           spacing: 6,
-                          children: (profile['tags'] as List)
+                          runSpacing: 6,
+                          children: widget.commonTags
                               .take(3)
-                              .map(
-                                (tag) => Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 10,
-                                    vertical: 4,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white.withValues(alpha: 0.2),
-                                    borderRadius: BorderRadius.circular(20),
-                                    border: Border.all(
-                                      color: Colors.white30,
-                                      width: 1,
+                              .map((t) => Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 10, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.primary,
+                                      borderRadius: BorderRadius.circular(16),
                                     ),
-                                  ),
-                                  child: Text(
-                                    tag.toString(),
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                ),
-                              )
+                                    child: Text(t,
+                                        style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600)),
+                                  ))
                               .toList(),
                         ),
                       ],

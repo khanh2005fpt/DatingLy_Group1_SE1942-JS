@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <title>DatingLy – hướng C: bong bóng chat chứa trái tim</title>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0" stop-color="#FD297B"/><stop offset="1" stop-color="#FF655B"/>
+    </linearGradient>
+    <linearGradient id="h" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0" stop-color="#FD297B"/><stop offset="1" stop-color="#FF655B"/>
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="1024" rx="230" fill="url(#bg)"/>
+  <circle cx="150" cy="880" r="240" fill="#fff" opacity="0.07"/>
+  <!-- Bong bóng chat có đuôi -->
+  <path fill="#fff" d="M300 210 H724 C800 210 860 270 860 346 V560 C860 636 800 696 724 696 H520
+    L360 820 C346 831 326 821 326 803 V696 H300 C224 696 164 636 164 560 V346 C164 270 224 210 300 210 Z"/>
+  <path fill="url(#h)" d="M512 600 C420 536 366 486 366 430 C366 388 398 360 436 360 C468 360 498 376 512 404
+    C526 376 556 360 588 360 C626 360 658 388 658 430 C658 486 604 536 512 600 Z"/>
+</svg>

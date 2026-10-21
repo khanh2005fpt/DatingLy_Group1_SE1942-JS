@@ -6,12 +6,22 @@ class ViewProfileScreen extends StatelessWidget {
   final Map<String, dynamic> profile;
   final VoidCallback? onLike;
   final VoidCallback? onNope;
+  final VoidCallback? onSuperLike;
+
+  /// Khoảng cách (km) tới người này; null nếu thiếu vị trí.
+  final double? distanceKm;
+
+  /// Sở thích của mình, dùng để làm nổi bật sở thích chung.
+  final List<String> myTags;
 
   const ViewProfileScreen({
     super.key,
     required this.profile,
     this.onLike,
     this.onNope,
+    this.onSuperLike,
+    this.distanceKm,
+    this.myTags = const [],
   });
 
   @override
@@ -25,6 +35,10 @@ class ViewProfileScreen extends StatelessWidget {
     final String? gender = profile['gender'];
     final String? bio = profile['bio'];
     final List<dynamic> tags = profile['tags'] ?? [];
+    final prompts = ((profile['prompts'] as List?) ?? [])
+        .whereType<Map>()
+        .toList();
+    final common = tags.where((t) => myTags.contains(t.toString())).toList();
 
     return Scaffold(
       body: CustomScrollView(
@@ -130,7 +144,78 @@ class ViewProfileScreen extends StatelessWidget {
                       style: const TextStyle(
                           fontSize: 16,
                           height: 1.6,
-                          color: Colors.black87),
+                          ),
+                    ),
+                    const SizedBox(height: 24),
+                  ],
+
+                  // Khoảng cách
+                  if (distanceKm != null) ...[
+                    Row(
+                      children: [
+                        const Icon(Icons.location_on_outlined,
+                            color: AppColors.textSecondary, size: 18),
+                        const SizedBox(width: 6),
+                        Text(
+                          distanceKm! < 1
+                              ? 'Cách bạn dưới 1 km'
+                              : 'Cách bạn ${distanceKm!.round()} km',
+                          style: const TextStyle(
+                              color: AppColors.textSecondary, fontSize: 15),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+                  ],
+
+                  // Prompts
+                  for (final p in prompts) ...[
+                    Container(
+                      width: double.infinity,
+                      margin: const EdgeInsets.only(bottom: 12),
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '${p['question']}',
+                            style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.primary),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            '${p['answer']}',
+                            style: const TextStyle(fontSize: 17, height: 1.4),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                  if (prompts.isNotEmpty) const SizedBox(height: 12),
+
+                  // Sở thích chung
+                  if (common.isNotEmpty) ...[
+                    _sectionTitle('${common.length} sở thích chung'),
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: common
+                          .map((t) => Chip(
+                                avatar: const Icon(Icons.favorite,
+                                    size: 16, color: AppColors.primary),
+                                label: Text(t.toString()),
+                                backgroundColor:
+                                    AppColors.primary.withValues(alpha: 0.12),
+                                side: BorderSide.none,
+                              ))
+                          .toList(),
                     ),
                     const SizedBox(height: 24),
                   ],
@@ -188,6 +273,18 @@ class ViewProfileScreen extends StatelessWidget {
                               },
                             ),
                           ),
+                        if (onSuperLike != null) ...[
+                          const SizedBox(width: 12),
+                          IconButton.filledTonal(
+                            tooltip: 'Super Like',
+                            icon: const Icon(Icons.star_rounded,
+                                color: Colors.blueAccent),
+                            onPressed: () {
+                              Navigator.pop(context);
+                              onSuperLike?.call();
+                            },
+                          ),
+                        ],
                         if (onLike != null && onNope != null)
                           const SizedBox(width: 12),
                         if (onLike != null)
@@ -238,7 +335,7 @@ class ViewProfileScreen extends StatelessWidget {
         style: const TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.bold,
-            color: AppColors.textPrimary));
+            color: null));
   }
 }
 

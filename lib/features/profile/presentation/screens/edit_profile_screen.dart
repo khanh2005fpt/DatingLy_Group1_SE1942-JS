@@ -252,7 +252,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         border: Border.all(color: AppColors.primary, width: 3),
-                        color: Colors.grey[200],
+                        color: Colors.grey.withValues(alpha: 0.25),
                       ),
                       child: ClipOval(
                         child: _pickedAvatarBytes != null
@@ -390,7 +390,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                     selectedColor: AppColors.primary.withValues(alpha: 0.2),
                     checkmarkColor: AppColors.primary,
                     labelStyle: TextStyle(
-                      color: isSelected ? AppColors.primary : Colors.black87,
+                      color: isSelected ? AppColors.primary : null,
                       fontWeight:
                           isSelected ? FontWeight.bold : FontWeight.normal,
                     ),
@@ -502,7 +502,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
             onTap: _pickProfilePhoto,
             child: Container(
               decoration: BoxDecoration(
-                color: Colors.grey[100],
+                color: Colors.grey.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
                     color: AppColors.primary.withValues(alpha: 0.4),
@@ -537,7 +537,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                       width: double.infinity,
                       height: double.infinity,
                       errorBuilder: (c, e, s) =>
-                          Container(color: Colors.grey[200]),
+                          Container(color: Colors.grey.withValues(alpha: 0.25)),
                     )
                   : Image.memory(
                       photo.bytes!,
@@ -578,7 +578,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         style: const TextStyle(
             fontSize: 17,
             fontWeight: FontWeight.bold,
-            color: AppColors.textPrimary));
+            color: null));
   }
 
   Widget _buildLabel(String label) {
@@ -586,7 +586,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         style: const TextStyle(
             fontWeight: FontWeight.bold,
             fontSize: 15,
-            color: AppColors.textPrimary));
+            color: null));
   }
 
   InputDecoration _inputDecoration(String hint, IconData icon) {

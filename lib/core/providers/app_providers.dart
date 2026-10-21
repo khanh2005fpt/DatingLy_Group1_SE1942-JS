@@ -4,6 +4,7 @@ import '../../data/services/firestore_service.dart';
 import '../../data/services/firebase_storage_service.dart';
 import '../../data/services/preferences_service.dart';
 import '../../data/services/notification_service.dart';
+import '../../data/services/location_service.dart';
 
 // Provider cho SharedPreferences (sẽ override trong main.dart sau khi init)
 final preferencesServiceProvider = Provider<PreferencesService>((ref) {
@@ -30,6 +31,11 @@ final firebaseStorageServiceProvider = Provider<FirebaseStorageService>((ref) {
 final notificationServiceProvider = Provider<NotificationService>((ref) {
   throw UnimplementedError(
       'notificationServiceProvider must be overridden in main.dart');
+});
+
+// Provider cho Location Service
+final locationServiceProvider = Provider<LocationService>((ref) {
+  return LocationService();
 });
 
 // StreamProvider theo dõi trạng thái Auth hiện tại
