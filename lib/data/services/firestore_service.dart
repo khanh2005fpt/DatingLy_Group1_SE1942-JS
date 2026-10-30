@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/user_model.dart';
 import '../models/match_model.dart';
 import '../models/message_model.dart';
+import '../models/report_model.dart';
 
 class FirestoreService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
@@ -14,6 +15,8 @@ class FirestoreService {
       _db.collection('matches');
   CollectionReference<Map<String, dynamic>> get _messagesCol =>
       _db.collection('messages');
+  CollectionReference<Map<String, dynamic>> get _reportsCol =>
+      _db.collection('reports');
 
   // ==================== PROFILE / USER ====================
 
@@ -210,4 +213,64 @@ class FirestoreService {
     }
     await batch.commit();
   }
+
+  // ==================== SAFETY / BLOCK / REPORT ====================
+
+  /// Gửi báo cáo vi phạm vào collection `reports`
+  Future<void> submitReport(ReportModel report) async {
+    await _reportsCol.add(report.toMap());
+  }
+
+  /// Chặn người dùng: thêm targetId vào mảng blocked_users của myId
+  Future<void> blockUser(String myId, String targetId) async {
+    await _usersCol.doc(myId).update({
+      'blocked_users': FieldValue.arrayUnion([targetId]),
+    });
+  }
+
+  /// Bỏ chặn người dùng: xoá targetId khỏi mảng blocked_users của myId
+  Future<void> unblockUser(String myId, String targetId) async {
+    await _usersCol.doc(myId).update({
+      'blocked_users': FieldValue.arrayRemove([targetId]),
+    });
+  }
+
+  /// Lấy danh sách user bị chặn của myId (trả về List<UserModel>)
+  Future<List<UserModel>> getBlockedUsers(String myId) async {
+    final doc = await _usersCol.doc(myId).get();
+    if (!doc.exists || doc.data() == null) return [];
+    final myProfile = UserModel.fromFirestore(doc);
+    final blockedIds = myProfile.blockedUsers;
+    if (blockedIds.isEmpty) return [];
+
+    final List<UserModel> blockedList = [];
+    for (final id in blockedIds) {
+      final user = await getUserProfile(id);
+      if (user != null) blockedList.add(user);
+    }
+    return blockedList;
+  }
+
+  /// Cập nhật trạng thái Ghost Mode trên Firestore
+  Future<void> updateGhostMode(String userId, bool isGhost) async {
+    await _usersCol.doc(userId).set(
+      {'ghost_mode': isGhost},
+      SetOptions(merge: true),
+    );
+  }
+
+  /// Lấy tất cả tin nhắn ảnh (message_type == 'image') trong một cuộc hội thoại
+  Future<List<MessageModel>> getMatchMediaMessages(String matchId) async {
+    final snap = await _messagesCol
+        .where('match_id', isEqualTo: matchId)
+        .where('message_type', isEqualTo: 'image')
+        .get();
+    final list = snap.docs
+        .map((doc) => MessageModel.fromMap(doc.data(), doc.id))
+        .toList();
+    list.sort((a, b) =>
+        (b.createdAt ?? DateTime.now()).compareTo(a.createdAt ?? DateTime.now()));
+    return list;
+  }
 }
+

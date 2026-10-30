@@ -7,6 +7,7 @@ class PreferencesService {
   static const String _keyGenderFilter = 'cfg_gender_filter';
   static const String _keyNotificationsEnabled = 'cfg_notifications_enabled';
   static const String _keyFcmToken = 'cfg_fcm_token';
+  static const String _keyGhostMode = 'cfg_ghost_mode';
 
   final SharedPreferences _prefs;
 
@@ -48,5 +49,12 @@ class PreferencesService {
     if (token == null) return _prefs.remove(_keyFcmToken);
     return _prefs.setString(_keyFcmToken, token);
   }
+
+  // --- Ghost Mode (Ẩn danh / Pause account) ---
+  bool get ghostMode => _prefs.getBool(_keyGhostMode) ?? false;
+  Future<bool> setGhostMode(bool value) => _prefs.setBool(_keyGhostMode, value);
+
+  // --- Clear All (dùng khi Logout) ---
+  Future<void> clearAll() async => _prefs.clear();
 
 }

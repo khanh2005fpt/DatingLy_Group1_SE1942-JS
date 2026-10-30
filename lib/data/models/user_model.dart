@@ -11,6 +11,8 @@ class UserModel {
   final List<String> tags;
   final List<String> avatarUrls;
   final String? fcmToken;
+  final bool ghostMode;
+  final List<String> blockedUsers;
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
@@ -24,6 +26,8 @@ class UserModel {
     this.tags = const [],
     this.avatarUrls = const [],
     this.fcmToken,
+    this.ghostMode = false,
+    this.blockedUsers = const [],
     this.createdAt,
     this.updatedAt,
   });
@@ -41,6 +45,8 @@ class UserModel {
     List<String>? tags,
     List<String>? avatarUrls,
     String? fcmToken,
+    bool? ghostMode,
+    List<String>? blockedUsers,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -54,6 +60,8 @@ class UserModel {
       tags: tags ?? this.tags,
       avatarUrls: avatarUrls ?? this.avatarUrls,
       fcmToken: fcmToken ?? this.fcmToken,
+      ghostMode: ghostMode ?? this.ghostMode,
+      blockedUsers: blockedUsers ?? this.blockedUsers,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -70,6 +78,8 @@ class UserModel {
       'tags': tags,
       'avatar_urls': avatarUrls,
       if (fcmToken != null) 'fcm_token': fcmToken,
+      'ghost_mode': ghostMode,
+      'blocked_users': blockedUsers,
       'created_at': createdAt != null ? Timestamp.fromDate(createdAt!) : FieldValue.serverTimestamp(),
       'updated_at': FieldValue.serverTimestamp(),
     };
@@ -98,6 +108,8 @@ class UserModel {
               .toList() ??
           [],
       fcmToken: map['fcm_token'] as String?,
+      ghostMode: map['ghost_mode'] as bool? ?? false,
+      blockedUsers: (map['blocked_users'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
       createdAt: parseDate(map['created_at']),
       updatedAt: parseDate(map['updated_at']),
     );

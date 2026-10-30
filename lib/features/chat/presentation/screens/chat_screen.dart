@@ -443,6 +443,34 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         ),
         actions: [
           IconButton(
+            icon: const Icon(Icons.photo_library_outlined, color: AppColors.primary),
+            tooltip: 'Thư viện ảnh',
+            onPressed: () => context.push(
+              '/settings/media-gallery/${widget.matchId}',
+              extra: {'otherUserName': widget.otherUserName},
+            ),
+          ),
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert),
+            onSelected: (value) {
+              if (value == 'report') {
+                context.push('/settings/safety');
+              }
+            },
+            itemBuilder: (_) => const [
+              PopupMenuItem(
+                value: 'report',
+                child: Row(
+                  children: [
+                    Icon(Icons.flag_outlined, color: Colors.redAccent, size: 20),
+                    SizedBox(width: 8),
+                    Text('Báo cáo người dùng', style: TextStyle(color: Colors.redAccent)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          IconButton(
             icon: const Icon(Icons.gamepad_outlined, color: AppColors.primary),
             onPressed: () => context.push('/minigame'),
           ),

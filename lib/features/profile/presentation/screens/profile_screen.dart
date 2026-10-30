@@ -80,6 +80,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           ),
           actions: [
             IconButton(
+              icon: const Icon(Icons.settings_outlined, color: Colors.white),
+              tooltip: 'Cài đặt',
+              onPressed: () => context.push('/settings'),
+            ),
+            IconButton(
               icon: const Icon(Icons.edit_outlined, color: Colors.white),
               tooltip: 'Chỉnh sửa hồ sơ',
               onPressed: () {
