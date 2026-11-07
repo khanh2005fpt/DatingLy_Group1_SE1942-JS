@@ -122,7 +122,8 @@ class UserModel {
       'onboarding_completed': onboardingCompleted,
       if (fcmToken != null) 'fcm_token': fcmToken,
       if (location != null) 'location': location,
-      if (prompts.isNotEmpty) 'prompts': prompts.map((p) => p.toMap()).toList(),
+      // Luôn ghi (kể cả rỗng) để xóa hết prompt thì Firestore merge cũng cập nhật.
+      'prompts': prompts.map((p) => p.toMap()).toList(),
       'created_at': createdAt != null
           ? Timestamp.fromDate(createdAt!)
           : FieldValue.serverTimestamp(),

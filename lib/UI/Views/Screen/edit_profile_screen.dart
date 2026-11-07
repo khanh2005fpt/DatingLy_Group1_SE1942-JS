@@ -5,8 +5,10 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../data/models/profile_constants.dart';
+import '../../../data/models/user_model.dart';
 import '../../app_colors.dart';
 import '../Widget/image_crop_compress_helper.dart';
+import '../Widget/profile_prompts_editor.dart';
 import '../../ViewModels/profile_view_model.dart';
 
 class _PhotoItem {
@@ -37,6 +39,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen>
   late String _gender;
   late String _orientation;
   late List<String> _selectedTags;
+  late List<ProfilePrompt> _prompts;
 
   final List<_PhotoItem> _photos = [];
   bool _isSaving = false;
@@ -66,6 +69,10 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen>
 
     final rawTags = p?['tags'];
     _selectedTags = rawTags != null ? List<String>.from(rawTags) : [];
+    _prompts = ((p?['prompts'] as List?) ?? [])
+        .map(ProfilePrompt.tryParse)
+        .whereType<ProfilePrompt>()
+        .toList();
 
     final avatarUrls = p?['avatar_urls'];
     if (avatarUrls != null && avatarUrls is List) {
@@ -273,6 +280,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen>
         bio: _bioController.text.trim(),
         tags: _selectedTags,
         avatarUrls: finalUrls,
+        prompts: _prompts,
       );
 
       if (!mounted) return;
@@ -610,6 +618,21 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen>
                 );
               }).toList(),
             ),
+          ),
+          const SizedBox(height: 28),
+          Text(
+            'Prompt hồ sơ 💬 (tối đa ${ProfileConstants.maxProfilePrompts})',
+            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Chọn câu hỏi và trả lời, chúng sẽ hiển thị trên hồ sơ của bạn.',
+            style: TextStyle(color: Colors.grey[600], fontSize: 13),
+          ),
+          const SizedBox(height: 12),
+          ProfilePromptsEditor(
+            initialPrompts: _prompts,
+            onChanged: (list) => setState(() => _prompts = list),
           ),
           const SizedBox(height: 28),
           Row(
@@ -1136,6 +1159,40 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen>
               ),
             ),
           ),
+          if (_prompts.isNotEmpty) ...[
+            const SizedBox(height: 20),
+            const Text(
+              'Về mình 💬',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 10),
+            for (final p in _prompts)
+              Container(
+                width: double.infinity,
+                margin: const EdgeInsets.only(bottom: 10),
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: Colors.grey[200]!),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      p.question,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(p.answer, style: const TextStyle(fontSize: 14)),
+                  ],
+                ),
+              ),
+          ],
           const SizedBox(height: 24),
           Container(
             padding: const EdgeInsets.all(14),

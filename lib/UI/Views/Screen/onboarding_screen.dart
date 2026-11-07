@@ -5,8 +5,10 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../data/models/profile_constants.dart';
+import '../../../data/models/user_model.dart';
 import '../../app_colors.dart';
 import '../Widget/image_crop_compress_helper.dart';
+import '../Widget/profile_prompts_editor.dart';
 import '../Widget/app_branding_widget.dart';
 import '../../ViewModels/auth_view_model.dart';
 import '../../ViewModels/profile_view_model.dart';
@@ -39,10 +41,22 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   final List<String> _selectedTags = [];
   final _customTagController = TextEditingController();
 
-  // ── Step 4: Ảnh Profile (Crop & Nén) ──
+  // ── Step 4: Giới thiệu bản thân & Prompt (không bắt buộc) ──
+  static const String _defaultBio =
+      'Chào mừng bạn đến với hồ sơ của mình! Hãy kết nối nhé ✨';
+  final _bioController = TextEditingController();
+  List<ProfilePrompt> _prompts = [];
+
+  // ── Step 5: Ảnh Profile (Crop & Nén) ──
   final List<Uint8List> _profilePhotoBytes = [];
 
-  static const int _totalSteps = 4;
+  static const int _totalSteps = 5;
+  static const int _photoStepIndex = 4;
+
+  String get _effectiveBio {
+    final bio = _bioController.text.trim();
+    return bio.isEmpty ? _defaultBio : bio;
+  }
 
   @override
   void initState() {
@@ -64,6 +78,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     _pageController.dispose();
     _nameController.dispose();
     _customTagController.dispose();
+    _bioController.dispose();
     super.dispose();
   }
 
@@ -234,6 +249,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       case 2:
         return _selectedTags.isNotEmpty;
       case 3:
+        return true; // Bio & prompt là tùy chọn
+      case _photoStepIndex:
         return _profilePhotoBytes.isNotEmpty;
       default:
         return true;
@@ -248,7 +265,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         _showToast('Vui lòng nhập tên đầy đủ của bạn');
       } else if (_currentIndex == 2) {
         _showToast('Vui lòng chọn ít nhất 1 sở thích');
-      } else if (_currentIndex == 3) {
+      } else if (_currentIndex == _photoStepIndex) {
         _showToast('Vui lòng tải lên ít nhất 1 ảnh hồ sơ');
       }
       return;
@@ -309,9 +326,10 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         gender: _gender,
         interestedIn: _interestedIn,
         orientation: _orientation,
-        bio: 'Chào mừng bạn đến với hồ sơ của mình! Hãy kết nối nhé ✨',
+        bio: _effectiveBio,
         tags: _selectedTags,
         avatarUrls: uploadedUrls,
+        prompts: _prompts,
       );
 
       if (!mounted) return;
@@ -343,6 +361,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       'Thông tin cơ bản',
       'Giới tính & Định hướng',
       'Sở thích cá nhân',
+      'Giới thiệu & Prompt',
       'Ảnh hồ sơ (Media)',
     ];
 
@@ -419,6 +438,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                       _buildStep1BasicInfo(),
                       _buildStep2GenderOrientation(),
                       _buildStep3Interests(),
+                      _buildStepBioAndPrompts(),
                       _buildStep4MediaPhotos(),
                     ],
                   ),
@@ -1035,6 +1055,84 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     );
   }
 
+  Widget _buildStepBioAndPrompts() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Giới thiệu bản thân ✍️',
+            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Không bắt buộc, nhưng hồ sơ có giới thiệu sẽ dễ được làm quen hơn.',
+            style: TextStyle(color: Colors.grey[600], fontSize: 13),
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            controller: _bioController,
+            maxLines: 4,
+            maxLength: 500,
+            onChanged: (_) => setState(() {}),
+            decoration: InputDecoration(
+              hintText: 'Viết vài dòng giới thiệu bản thân...',
+              filled: true,
+              fillColor: Colors.white,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: ProfileConstants.bioQuickPrompts.map((text) {
+                return Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: ActionChip(
+                    label: Text(text, style: const TextStyle(fontSize: 12)),
+                    backgroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      side: BorderSide(
+                        color: AppColors.primary.withValues(alpha: 0.3),
+                      ),
+                    ),
+                    onPressed: () {
+                      final current = _bioController.text.trim();
+                      setState(() {
+                        _bioController.text =
+                            current.isEmpty ? text : '$current $text';
+                      });
+                    },
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+          const SizedBox(height: 28),
+          const Text(
+            'Prompt hồ sơ 💬',
+            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Chọn tối đa ${ProfileConstants.maxProfilePrompts} câu hỏi và trả lời. Chúng sẽ hiển thị trên hồ sơ của bạn.',
+            style: TextStyle(color: Colors.grey[600], fontSize: 13),
+          ),
+          const SizedBox(height: 16),
+          ProfilePromptsEditor(
+            initialPrompts: _prompts,
+            onChanged: (list) => setState(() => _prompts = list),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildStep4MediaPhotos() {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
@@ -1633,9 +1731,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                                           ],
                                         ),
                                         const SizedBox(height: 8),
-                                        const Text(
-                                          'Chào mừng bạn đến với hồ sơ của mình! Hãy kết nối nhé ✨',
-                                          style: TextStyle(
+                                        Text(
+                                          _effectiveBio,
+                                          style: const TextStyle(
                                             color: Colors.white70,
                                             fontSize: 13,
                                           ),
@@ -1688,6 +1786,48 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                                 );
                               }).toList(),
                             ),
+                          ],
+
+                          // Prompts section
+                          if (_prompts.isNotEmpty) ...[
+                            const SizedBox(height: 20),
+                            const Text(
+                              'Về mình 💬',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            for (final p in _prompts)
+                              Container(
+                                width: double.infinity,
+                                margin: const EdgeInsets.only(bottom: 10),
+                                padding: const EdgeInsets.all(14),
+                                decoration: BoxDecoration(
+                                  color: Colors.grey[50],
+                                  borderRadius: BorderRadius.circular(14),
+                                  border: Border.all(color: Colors.grey[200]!),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      p.question,
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                        color: AppColors.primary,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    Text(
+                                      p.answer,
+                                      style: const TextStyle(fontSize: 14),
+                                    ),
+                                  ],
+                                ),
+                              ),
                           ],
                         ],
                       ),

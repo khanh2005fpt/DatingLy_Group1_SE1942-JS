@@ -124,6 +124,22 @@ class ProfileConstants {
 
   static const List<String> genders = ['Nam', 'Nữ', 'Khác'];
 
+  /// Số prompt tối đa mỗi người được hiển thị trên hồ sơ.
+  static const int maxProfilePrompts = 3;
+  static const int maxPromptAnswerLength = 150;
+
+  /// Câu hỏi gợi ý cho prompt hồ sơ (user chọn 1 câu rồi tự trả lời).
+  static const List<String> promptQuestions = [
+    'Điều khiến mình vui nhất cuối tuần là…',
+    'Một điều ít ai biết về mình…',
+    'Buổi hẹn đầu tiên lý tưởng của mình là…',
+    'Mình sẽ không từ chối lời mời đi…',
+    'Điều mình tìm kiếm ở một nửa kia là…',
+    'Bài hát mình nghe đi nghe lại gần đây…',
+    'Cách nhanh nhất để làm mình cười là…',
+    'Ước mơ lớn nhất của mình là…',
+  ];
+
   static const List<String> bioQuickPrompts = [
     'Thích cà phê sáng và những buổi đi dạo đêm ☕',
     'Yêu động vật, đặc biệt là boss mèo 🐾',

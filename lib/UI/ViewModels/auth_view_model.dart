@@ -282,6 +282,8 @@ class AuthViewModel extends Notifier<AuthState> {
       );
       await _userRepo.saveUserProfile(initialUser);
       await _settingRepo.cacheUserProfile(initialUser);
+      // Tài khoản mới luôn phải qua onboarding, kể cả khi máy từng hoàn tất onboarding với tài khoản khác
+      await _settingRepo.setOnboardingCompleted(false);
 
       state = state.copyWith(
         isLoading: false,
@@ -337,6 +339,7 @@ class AuthViewModel extends Notifier<AuthState> {
         profile.fullName.trim().isNotEmpty;
 
     await _settingRepo.setOnboardingCompleted(hasCompleted);
+    if (hasCompleted) await _settingRepo.setIsFirstTimeUser(false);
     await _settingRepo.cacheUserProfile(profile);
 
     state = state.copyWith(
@@ -356,6 +359,7 @@ class AuthViewModel extends Notifier<AuthState> {
     required String bio,
     required List<String> tags,
     required List<String> avatarUrls,
+    List<ProfilePrompt> prompts = const [],
   }) async {
     final uid = _authRepo.currentUser?.uid;
     if (uid == null) {
@@ -379,6 +383,7 @@ class AuthViewModel extends Notifier<AuthState> {
         bio: bio.trim(),
         tags: tags,
         avatarUrls: avatarUrls,
+        prompts: prompts,
         onboardingCompleted: true,
         updatedAt: DateTime.now(),
       );
@@ -412,6 +417,8 @@ class AuthViewModel extends Notifier<AuthState> {
     _resendTimer.cancel();
     await _authRepo.signOut();
     await _settingRepo.clearCachedUserProfile();
+    // Cờ onboarding là theo từng tài khoản: reset để người dùng kế tiếp trên máy này không bị bỏ qua onboarding
+    await _settingRepo.setOnboardingCompleted(false);
     state = const AuthState();
   }
 }

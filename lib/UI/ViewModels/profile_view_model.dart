@@ -38,6 +38,7 @@ class ProfileViewModel {
     required String bio,
     required List<String> tags,
     List<String>? avatarUrls,
+    List<ProfilePrompt>? prompts,
   }) async {
     final myId = _authRepo.currentUser?.uid;
     if (myId == null) throw Exception('Chưa đăng nhập');
@@ -52,6 +53,7 @@ class ProfileViewModel {
       bio: bio,
       tags: tags,
       avatarUrls: avatarUrls ?? existing?.avatarUrls,
+      prompts: prompts ?? existing?.prompts,
       onboardingCompleted: true,
       updatedAt: DateTime.now(),
     );

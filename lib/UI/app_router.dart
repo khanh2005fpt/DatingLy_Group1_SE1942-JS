@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:go_router/go_router.dart';
 import '../data/repositories/setting_repository.dart';
+import 'Views/Screen/welcome_screen.dart';
 import 'Views/Screen/login_screen.dart';
 import 'Views/Screen/register_screen.dart';
 import 'Views/Screen/onboarding_screen.dart';
@@ -21,8 +22,12 @@ class AppRouter {
       final path = state.matchedLocation;
       final isAuthPage = path == '/login' || path == '/register';
 
-      // 1. Chưa đăng nhập
+      // 1. Chưa đăng nhập: lần đầu mở app thì xem màn chào trước
       if (!loggedIn) {
+        final isFirstTime =
+            SettingRepository.instance?.isFirstTimeUser ?? false;
+        if (path == '/welcome') return isFirstTime ? null : '/login';
+        if (isFirstTime) return '/welcome';
         return isAuthPage ? null : '/login';
       }
 
@@ -35,13 +40,17 @@ class AppRouter {
       }
 
       // 3. Đã đăng nhập & hoàn tất onboarding
-      if (isAuthPage || path == '/onboarding') {
+      if (isAuthPage || path == '/onboarding' || path == '/welcome') {
         return '/discovery';
       }
 
       return null;
     },
     routes: [
+      GoRoute(
+        path: '/welcome',
+        builder: (context, state) => const WelcomeScreen(),
+      ),
       GoRoute(
         path: '/login',
         builder: (context, state) => const LoginScreen(),
