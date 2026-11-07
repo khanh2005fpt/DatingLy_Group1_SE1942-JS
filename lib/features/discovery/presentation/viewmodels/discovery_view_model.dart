@@ -75,6 +75,21 @@ class DiscoveryViewModel extends Notifier<DiscoveryState> {
           isSuperLike: isSuperLike,
         );
   }
+
+  /// Khôi phục user đã rewind để hiển thị lại trong Discovery
+  Future<void> restore(String userId) async {
+    try {
+      final userDoc =
+          await ref.read(firestoreServiceProvider).getUserProfile(userId);
+      if (userDoc == null || userDoc.gender != gender) return;
+
+      // Đưa lên đầu danh sách, loại bỏ bản ghi cũ nếu đã tồn tại để tránh trùng
+      final others = state.candidates.where((u) => u.id != userId).toList();
+      state = state.copyWith(candidates: [userDoc, ...others]);
+    } catch (_) {
+      // Bỏ qua nếu không tìm thấy user
+    }
+  }
 }
 
 final discoveryViewModelProvider =

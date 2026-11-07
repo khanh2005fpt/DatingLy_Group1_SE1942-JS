@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../data/models/swipe_history_model.dart';
+import '../../../discovery/presentation/viewmodels/discovery_view_model.dart';
 import '../viewmodels/swipe_history_view_model.dart';
 
 class HistoryRewindScreen extends ConsumerWidget {
@@ -110,7 +113,17 @@ class HistoryRewindScreen extends ConsumerWidget {
                       isRewinding: state.isRewinding,
                       onRewind: () async {
                         final rewound = await viewModel.rewindLastSwipe();
-                        if (rewound != null && context.mounted) {
+                        if (rewound != null) {
+                          // Đưa người vừa hoàn tác trở lại Discovery
+                          for (final gender in ['Nữ', 'Nam', 'Khác']) {
+                            unawaited(
+                              ref
+                                  .read(discoveryViewModelProvider(gender)
+                                      .notifier)
+                                  .restore(rewound.targetUserId),
+                            );
+                          }
+                          if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
                               backgroundColor: const Color(0xFF2E7D32),
@@ -154,7 +167,17 @@ class HistoryRewindScreen extends ConsumerWidget {
                         item: item,
                         onRewind: () async {
                           final success = await viewModel.rewindSwipe(item);
-                          if (success && context.mounted) {
+                          if (success) {
+                            // Đưa người vừa hoàn tác trở lại Discovery
+                            for (final gender in ['Nữ', 'Nam', 'Khác']) {
+                              unawaited(
+                                ref
+                                    .read(discoveryViewModelProvider(gender)
+                                        .notifier)
+                                    .restore(item.targetUserId),
+                              );
+                            }
+                            if (context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
                                 content: Text(
