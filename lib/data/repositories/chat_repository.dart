@@ -1,12 +1,65 @@
-﻿import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:path/path.dart' as p;
+import 'package:sqflite/sqflite.dart';
+
 import '../models/match_model.dart';
 import '../models/message_model.dart';
 import 'data_helper.dart';
+import 'photo_codec.dart';
 import 'user_repository.dart';
 
+/// ChatRepository: Quản lý collection matches, subcollection/collection messages
+/// và tích hợp SQLite Local Cache (PRM393 MVVM Pattern).
 class ChatRepository {
+  static const String _dbName = 'chat_cache.db';
+  static const String _table = 'messages';
+
   final DataHelper _helper = DataHelper();
   final UserRepository _userRepo = UserRepository();
+
+  Future<Database?>? _dbFuture;
+
+  bool get _isSqfliteSupported =>
+      !kIsWeb &&
+      (defaultTargetPlatform == TargetPlatform.android ||
+          defaultTargetPlatform == TargetPlatform.iOS ||
+          defaultTargetPlatform == TargetPlatform.macOS);
+
+  Future<Database?> get _db => _dbFuture ??= _openDb();
+
+  Future<Database?> _openDb() async {
+    if (!_isSqfliteSupported) return null;
+    try {
+      final path = p.join(await getDatabasesPath(), _dbName);
+      return await openDatabase(
+        path,
+        version: 1,
+        onCreate: (db, version) async {
+          await db.execute('''
+            CREATE TABLE $_table (
+              id TEXT PRIMARY KEY,
+              match_id TEXT NOT NULL,
+              sender_id TEXT NOT NULL,
+              content TEXT NOT NULL,
+              message_type TEXT NOT NULL,
+              is_read INTEGER NOT NULL,
+              created_at INTEGER NOT NULL
+            )
+          ''');
+          await db.execute(
+            'CREATE INDEX idx_messages_match_time ON $_table (match_id, created_at)',
+          );
+        },
+      );
+    } catch (e) {
+      debugPrint('ChatRepository SQLite open error: $e');
+      return null;
+    }
+  }
+
+  // ==================== MATCHES ====================
 
   Stream<List<MatchModel>> streamMatches(String myId) {
     return _helper.matchesCol
@@ -43,16 +96,22 @@ class ChatRepository {
     });
   }
 
+  // ==================== MESSAGES & REALTIME ====================
+
   Stream<List<MessageModel>> streamMessages(String matchId) {
     return _helper.messagesCol
         .where('match_id', isEqualTo: matchId)
         .snapshots()
         .map((snapshot) {
       final list = snapshot.docs
-          .map((doc) => MessageModel.fromMap(doc.data(), doc.id))
+          .map((doc) => MessageModel.fromFirestore(doc))
           .toList();
       list.sort((a, b) => (a.createdAt ?? DateTime.now())
           .compareTo(b.createdAt ?? DateTime.now()));
+
+      // Lưu/cập nhật cache SQLite ở background
+      upsertMessagesToCache(list);
+
       return list;
     });
   }
@@ -61,8 +120,10 @@ class ChatRepository {
     required String matchId,
     required String senderId,
     required String content,
-    String type = 'text',
+    String type = MessageModel.typeText,
   }) async {
+    final preview = type == MessageModel.typeImage ? '📷 Ảnh' : content;
+
     await _helper.messagesCol.add({
       'match_id': matchId,
       'sender_id': senderId,
@@ -73,9 +134,19 @@ class ChatRepository {
     });
 
     await _helper.matchesCol.doc(matchId).update({
-      'last_message': content,
+      'last_message': preview,
+      'last_sender_id': senderId,
       'last_message_time': FieldValue.serverTimestamp(),
     });
+  }
+
+  /// Chuẩn bị ảnh đính kèm: nén nhỏ rồi trả về data URI (base64) để lưu thẳng
+  /// trong `content` của tin nhắn Firestore. Không dùng Firebase Storage (cần gói Blaze).
+  Future<String> uploadChatImage({
+    required String matchId,
+    required XFile imageFile,
+  }) async {
+    return PhotoCodec.encode(await imageFile.readAsBytes());
   }
 
   Future<void> markMessagesAsRead({
@@ -96,5 +167,59 @@ class ChatRepository {
     }
     await batch.commit();
   }
-}
 
+  // ==================== SQLITE LOCAL CACHE ====================
+
+  /// Lấy danh sách tin nhắn từ bộ nhớ cục bộ SQLite
+  Future<List<MessageModel>> getCachedMessages(
+    String matchId, {
+    int limit = 50,
+  }) async {
+    final db = await _db;
+    if (db == null) return [];
+    try {
+      final rows = await db.query(
+        _table,
+        where: 'match_id = ?',
+        whereArgs: [matchId],
+        orderBy: 'created_at DESC',
+        limit: limit,
+      );
+      return rows.map(MessageModel.fromCacheMap).toList().reversed.toList();
+    } catch (e) {
+      debugPrint('getCachedMessages error: $e');
+      return [];
+    }
+  }
+
+  /// Lưu/cập nhật danh sách tin nhắn vào SQLite
+  Future<void> upsertMessagesToCache(Iterable<MessageModel> messages) async {
+    final db = await _db;
+    if (db == null) return;
+    try {
+      final batch = db.batch();
+      for (final m in messages) {
+        if (m.isPending) continue;
+        batch.insert(
+          _table,
+          m.toCacheMap(),
+          conflictAlgorithm: ConflictAlgorithm.replace,
+        );
+      }
+      await batch.commit(noResult: true);
+    } catch (e) {
+      debugPrint('upsertMessagesToCache error: $e');
+    }
+  }
+
+  /// Xóa toàn bộ cache tin nhắn SQLite (khi Logout)
+  Future<void> clearCache() async {
+    final db = await _db;
+    if (db == null) return;
+    try {
+      await db.delete(_table);
+    } catch (e) {
+      debugPrint('clearCache error: $e');
+    }
+  }
+}

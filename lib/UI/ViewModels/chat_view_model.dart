@@ -1,4 +1,6 @@
+import 'package:image_picker/image_picker.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+
 import '../../data/models/match_model.dart';
 import '../../data/models/message_model.dart';
 import '../../data/repositories/app_providers.dart';
@@ -25,6 +27,13 @@ Stream<List<MessageModel>> messagesStream(Ref ref, String matchId) {
   return chatRepo.streamMessages(matchId);
 }
 
+// Lấy tin nhắn cache từ SQLite (dùng để hiện ngay trước khi stream Firestore về)
+@riverpod
+Future<List<MessageModel>> cachedMessagesFuture(Ref ref, String matchId) {
+  final chatRepo = ref.watch(chatRepositoryProvider);
+  return chatRepo.getCachedMessages(matchId);
+}
+
 class ChatViewModel {
   final ChatRepository _chatRepo;
   final AuthRepository _authRepo;
@@ -38,7 +47,7 @@ class ChatViewModel {
   Future<void> sendMessage({
     required String matchId,
     required String content,
-    String type = 'text',
+    String type = MessageModel.typeText,
   }) async {
     final myId = _authRepo.currentUser?.uid;
     if (myId == null || content.trim().isEmpty) return;
@@ -48,6 +57,26 @@ class ChatViewModel {
       senderId: myId,
       content: content.trim(),
       type: type,
+    );
+  }
+
+  Future<void> sendImageMessage({
+    required String matchId,
+    required XFile imageFile,
+  }) async {
+    final myId = _authRepo.currentUser?.uid;
+    if (myId == null) return;
+
+    final imageUrl = await _chatRepo.uploadChatImage(
+      matchId: matchId,
+      imageFile: imageFile,
+    );
+
+    await _chatRepo.sendMessage(
+      matchId: matchId,
+      senderId: myId,
+      content: imageUrl,
+      type: MessageModel.typeImage,
     );
   }
 
@@ -69,4 +98,3 @@ ChatViewModel chatViewModel(Ref ref) {
     authRepo: ref.watch(authRepositoryProvider),
   );
 }
-

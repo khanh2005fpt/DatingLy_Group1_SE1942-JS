@@ -125,6 +125,84 @@ final class MessagesStreamFamily extends $Family
   String toString() => r'messagesStreamProvider';
 }
 
+@ProviderFor(cachedMessagesFuture)
+final cachedMessagesFutureProvider = CachedMessagesFutureFamily._();
+
+final class CachedMessagesFutureProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<List<MessageModel>>,
+          List<MessageModel>,
+          FutureOr<List<MessageModel>>
+        >
+    with
+        $FutureModifier<List<MessageModel>>,
+        $FutureProvider<List<MessageModel>> {
+  CachedMessagesFutureProvider._({
+    required CachedMessagesFutureFamily super.from,
+    required String super.argument,
+  }) : super(
+         retry: null,
+         name: r'cachedMessagesFutureProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$cachedMessagesFutureHash();
+
+  @override
+  String toString() {
+    return r'cachedMessagesFutureProvider'
+        ''
+        '($argument)';
+  }
+
+  @$internal
+  @override
+  $FutureProviderElement<List<MessageModel>> $createElement(
+    $ProviderPointer pointer,
+  ) => $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<List<MessageModel>> create(Ref ref) {
+    final argument = this.argument as String;
+    return cachedMessagesFuture(ref, argument);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is CachedMessagesFutureProvider && other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
+}
+
+String _$cachedMessagesFutureHash() =>
+    r'e834852aba1e2d00586d99868c37fa4b0a94a8a6';
+
+final class CachedMessagesFutureFamily extends $Family
+    with $FunctionalFamilyOverride<FutureOr<List<MessageModel>>, String> {
+  CachedMessagesFutureFamily._()
+    : super(
+        retry: null,
+        name: r'cachedMessagesFutureProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  CachedMessagesFutureProvider call(String matchId) =>
+      CachedMessagesFutureProvider._(argument: matchId, from: this);
+
+  @override
+  String toString() => r'cachedMessagesFutureProvider';
+}
+
 @ProviderFor(chatViewModel)
 final chatViewModelProvider = ChatViewModelProvider._();
 

@@ -9,6 +9,7 @@ import '../../ViewModels/discovery_view_model.dart';
 import 'who_liked_you_screen.dart';
 import 'view_profile_screen.dart';
 import '../Widget/app_image.dart';
+import 'match_celebration_screen.dart';
 
 class DiscoveryScreen extends ConsumerStatefulWidget {
   const DiscoveryScreen({super.key});
@@ -98,98 +99,7 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
   }
 
   void _showMatchDialog(UserModel user, String matchId) {
-    final avatarUrl = user.mainAvatarUrl.isEmpty ? null : user.mainAvatarUrl;
-    final name = user.fullName.isEmpty ? 'người ấy' : user.fullName;
-
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (dialogCtx) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ShaderMask(
-                shaderCallback: (bounds) =>
-                    AppColors.primaryGradient.createShader(bounds),
-                child: const Text(
-                  '🎉 It\'s a Match!',
-                  style: TextStyle(
-                    fontSize: 26,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              if (avatarUrl != null)
-                CircleAvatar(
-                  radius: 45,
-                  backgroundImage: appImageProvider(avatarUrl),
-                )
-              else
-                const CircleAvatar(
-                  radius: 45,
-                  child: Icon(Icons.person, size: 45),
-                ),
-              const SizedBox(height: 12),
-              Text(
-                'Bạn và $name cùng thích nhau!',
-                textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 16),
-              ),
-              const SizedBox(height: 20),
-              // Xếp dọc, full chiều rộng để chữ không bị bẻ dòng
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 14),
-                  ),
-                  icon: const Icon(Icons.chat_bubble_outline, size: 20),
-                  label: const Text(
-                    'Nhắn tin ngay',
-                    maxLines: 1,
-                    softWrap: false,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  onPressed: () {
-                    Navigator.pop(dialogCtx);
-                    context.push(
-                      '/chat/$matchId',
-                      extra: {
-                        'otherUserName': name,
-                        'otherAvatarUrl': avatarUrl,
-                        'otherBio': user.bio,
-                        'otherTags': user.tags,
-                      },
-                    );
-                  },
-                ),
-              ),
-              const SizedBox(height: 8),
-              SizedBox(
-                width: double.infinity,
-                child: TextButton(
-                  style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                  ),
-                  onPressed: () => Navigator.pop(dialogCtx),
-                  child: const Text(
-                    'Tiếp tục quẹt',
-                    maxLines: 1,
-                    softWrap: false,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
+    showMatchCelebration(context, matchId: matchId, other: user);
   }
 
   @override
