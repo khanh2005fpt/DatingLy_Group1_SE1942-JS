@@ -22,6 +22,7 @@ class MediaGalleryScreen extends ConsumerStatefulWidget {
 
 class _MediaGalleryScreenState extends ConsumerState<MediaGalleryScreen> {
   late Future<List<MessageModel>> _mediaFuture;
+  List<MessageModel>? _demoMessages;
 
   @override
   void initState() {
@@ -109,7 +110,7 @@ class _MediaGalleryScreenState extends ConsumerState<MediaGalleryScreen> {
             );
           }
 
-          final messages = snapshot.data ?? [];
+          final messages = _demoMessages ?? snapshot.data ?? [];
 
           if (messages.isEmpty) {
             return Center(
@@ -135,6 +136,71 @@ class _MediaGalleryScreenState extends ConsumerState<MediaGalleryScreen> {
                     'Ảnh bạn và đối phương gửi trong chat\nsẽ xuất hiện ở đây.',
                     textAlign: TextAlign.center,
                     style: TextStyle(color: Colors.grey),
+                  ),
+                  const SizedBox(height: 20),
+                  ElevatedButton.icon(
+                    icon: const Icon(
+                      Icons.add_photo_alternate_outlined,
+                      size: 18,
+                    ),
+                    label: const Text('Nạp ảnh mẫu để thử nghiệm tính năng'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 12,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _demoMessages = [
+                          MessageModel(
+                            id: 'demo_1',
+                            matchId: widget.matchId,
+                            senderId: 'demo_user',
+                            content:
+                                'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=800',
+                            messageType: 'image',
+                            createdAt: DateTime.now()
+                                .subtract(const Duration(hours: 3)),
+                          ),
+                          MessageModel(
+                            id: 'demo_2',
+                            matchId: widget.matchId,
+                            senderId: 'demo_user',
+                            content:
+                                'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=800',
+                            messageType: 'image',
+                            createdAt: DateTime.now()
+                                .subtract(const Duration(hours: 2)),
+                          ),
+                          MessageModel(
+                            id: 'demo_3',
+                            matchId: widget.matchId,
+                            senderId: 'demo_user',
+                            content:
+                                'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=800',
+                            messageType: 'image',
+                            createdAt: DateTime.now()
+                                .subtract(const Duration(hours: 1)),
+                          ),
+                          MessageModel(
+                            id: 'demo_4',
+                            matchId: widget.matchId,
+                            senderId: 'demo_user',
+                            content:
+                                'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=800',
+                            messageType: 'image',
+                            createdAt: DateTime.now()
+                                .subtract(const Duration(minutes: 30)),
+                          ),
+                        ];
+                      });
+                    },
                   ),
                 ],
               ),

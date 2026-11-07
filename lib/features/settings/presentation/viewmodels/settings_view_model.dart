@@ -81,17 +81,44 @@ class SettingsViewModel extends Notifier<SettingsState> {
   }
 
   Future<void> unblockUser(String targetId) async {
-    if (_myId == null) return;
     state = state.copyWith(isLoading: true);
     try {
-      await ref.read(firestoreServiceProvider).unblockUser(_myId!, targetId);
-      final refreshed = await ref
-          .read(firestoreServiceProvider)
-          .getBlockedUsers(_myId!);
-      state = state.copyWith(isLoading: false, blockedUsers: refreshed);
+      if (targetId == 'demo_user_123') {
+        state = state.copyWith(
+          isLoading: false,
+          blockedUsers:
+              state.blockedUsers.where((u) => u.id != targetId).toList(),
+        );
+        return;
+      }
+      if (_myId != null) {
+        await ref.read(firestoreServiceProvider).unblockUser(_myId!, targetId);
+        final refreshed = await ref
+            .read(firestoreServiceProvider)
+            .getBlockedUsers(_myId!);
+        state = state.copyWith(isLoading: false, blockedUsers: refreshed);
+      }
     } catch (e) {
       state = state.copyWith(isLoading: false, error: e.toString());
     }
+  }
+
+  /// Thêm 1 user mẫu để test tính năng Chặn và Bỏ chặn
+  void addDemoBlockedUser() {
+    const demo = UserModel(
+      id: 'demo_user_123',
+      fullName: 'Nguyễn Văn Test (Demo)',
+      age: 24,
+      gender: 'Nam',
+      bio: 'Tài khoản mẫu để thử nghiệm tính năng Chặn và Bỏ chặn',
+      avatarUrls: ['https://randomuser.me/api/portraits/men/32.jpg'],
+    );
+    state = state.copyWith(
+      blockedUsers: [
+        demo,
+        ...state.blockedUsers.where((u) => u.id != demo.id),
+      ],
+    );
   }
 
   Future<void> loadBlockedUsers() async {

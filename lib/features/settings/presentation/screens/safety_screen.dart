@@ -397,6 +397,27 @@ class _SafetyScreenState extends ConsumerState<SafetyScreen>
               'Những người bạn đã chặn sẽ xuất hiện ở đây.',
               style: TextStyle(color: Colors.grey),
             ),
+            const SizedBox(height: 20),
+            ElevatedButton.icon(
+              icon: const Icon(Icons.person_add_disabled, size: 18),
+              label: const Text('Thêm 1 người mẫu để test Bỏ chặn'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 12,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              onPressed: () {
+                ref
+                    .read(settingsViewModelProvider.notifier)
+                    .addDemoBlockedUser();
+              },
+            ),
           ],
         ),
       );
