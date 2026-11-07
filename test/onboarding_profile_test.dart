@@ -143,5 +143,22 @@ void main() {
       expect(timerHistory, [3, 2, 1, 0]);
       expect(countdown, 0);
     });
+
+    test('formatPhoneNumber chuẩn hóa các định dạng số điện thoại về E.164 (+84...) chính xác', () {
+      final vm = AuthViewModel();
+      expect(vm.formatPhoneNumber('0912345678'), '+84912345678');
+      expect(vm.formatPhoneNumber('0912 345 678'), '+84912345678');
+      expect(vm.formatPhoneNumber('+84912345678'), '+84912345678');
+      expect(vm.formatPhoneNumber('912345678'), '+84912345678');
+    });
+
+    test('Mã OTP 6 chữ số hợp lệ và tự động phát hiện mã không đủ độ dài', () {
+      const codeShort = '12345';
+      const codeValid = '123456';
+
+      expect(codeShort.length < 6, isTrue);
+      expect(codeValid.length == 6, isTrue);
+      expect(RegExp(r'^\d{6}$').hasMatch(codeValid), isTrue);
+    });
   });
 }

@@ -21,6 +21,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   final _phoneFormKey = GlobalKey<FormState>();
   final _phoneController = TextEditingController();
   final _otpController = TextEditingController();
+  final _otpFocusNode = FocusNode();
 
   // Email Auth form
   final _emailFormKey = GlobalKey<FormState>();
@@ -54,6 +55,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     _tabController.dispose();
     _phoneController.dispose();
     _otpController.dispose();
+    _otpFocusNode.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
@@ -346,16 +348,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
             Row(
               children: [
                 IconButton(
-                  icon: const Icon(Icons.arrow_back_ios, size: 18),
+                  icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18),
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
                   onPressed: () {
+                    _otpController.clear();
                     ref.read(authViewModelProvider.notifier).resetPhoneAuth();
                   },
                 ),
                 const SizedBox(width: 8),
                 const Text(
-                  'Xác thực mã OTP',
+                  'Xác thực mã OTP 🔐',
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
@@ -363,42 +366,118 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                 ),
               ],
             ),
-            const SizedBox(height: 8),
-            Text(
-              'Nhập mã OTP 6 số vừa được gửi đến số ${authState.phoneNumber ?? ""}',
-              style: TextStyle(color: Colors.grey[600], fontSize: 13),
-            ),
-            const SizedBox(height: 24),
-            TextField(
-              controller: _otpController,
-              keyboardType: TextInputType.number,
-              maxLength: 6,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 28,
-                letterSpacing: 14,
-                fontWeight: FontWeight.bold,
-                color: AppColors.primary,
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: Colors.grey[100],
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: Colors.grey[300]!),
               ),
-              decoration: InputDecoration(
-                counterText: '',
-                hintText: '••••••',
-                hintStyle: TextStyle(
-                  color: Colors.grey[300],
-                  letterSpacing: 14,
-                ),
-                filled: true,
-                fillColor: Colors.grey[50],
-                contentPadding: const EdgeInsets.symmetric(vertical: 16),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: BorderSide(color: Colors.grey[300]!),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide:
-                      const BorderSide(color: AppColors.primary, width: 2),
-                ),
+              child: Row(
+                children: [
+                  const Icon(Icons.phone_iphone_rounded,
+                      size: 20, color: AppColors.primary),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      authState.phoneNumber ?? "",
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                        color: Colors.black87,
+                      ),
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: () {
+                      _otpController.clear();
+                      ref.read(authViewModelProvider.notifier).resetPhoneAuth();
+                    },
+                    child: const Text(
+                      'Đổi số',
+                      style: TextStyle(
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+            // Khung 6 ô PIN tương tác trực quan
+            GestureDetector(
+              onTap: () => FocusScope.of(context).requestFocus(_otpFocusNode),
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  Opacity(
+                    opacity: 0,
+                    child: TextField(
+                      focusNode: _otpFocusNode,
+                      controller: _otpController,
+                      keyboardType: TextInputType.number,
+                      maxLength: 6,
+                      autofocus: true,
+                      onChanged: (val) {
+                        setState(() {});
+                        if (val.trim().length == 6) {
+                          _handleVerifyPhoneOtp();
+                        }
+                      },
+                    ),
+                  ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: List.generate(6, (index) {
+                      final text = _otpController.text;
+                      final isFilled = index < text.length;
+                      final isCurrent = index == text.length;
+                      final char = isFilled ? text[index] : '';
+
+                      return AnimatedContainer(
+                        duration: const Duration(milliseconds: 180),
+                        width: 44,
+                        height: 54,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: isFilled
+                              ? AppColors.primary.withValues(alpha: 0.06)
+                              : Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: isCurrent
+                                ? AppColors.primary
+                                : (isFilled
+                                    ? AppColors.primary
+                                    : Colors.grey[300]!),
+                            width: isCurrent || isFilled ? 2 : 1.2,
+                          ),
+                          boxShadow: isCurrent
+                              ? [
+                                  BoxShadow(
+                                    color: AppColors.primary
+                                        .withValues(alpha: 0.2),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 2),
+                                  )
+                                ]
+                              : null,
+                        ),
+                        child: Text(
+                          char,
+                          style: const TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      );
+                    }),
+                  ),
+                ],
               ),
             ),
             const SizedBox(height: 20),
