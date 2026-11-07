@@ -1,4 +1,4 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+﻿import 'package:cloud_firestore/cloud_firestore.dart';
 import 'user_model.dart';
 
 class MatchModel {
@@ -104,3 +104,4 @@ class MatchModel {
     );
   }
 }
+

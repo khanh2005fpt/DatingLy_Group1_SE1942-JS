@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <title>DatingLy – hướng B: chữ D chứa trái tim</title>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0" stop-color="#FD297B"/><stop offset="1" stop-color="#FF655B"/>
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="1024" rx="230" fill="url(#bg)"/>
+  <circle cx="880" cy="140" r="250" fill="#fff" opacity="0.08"/>
+  <!-- Chữ D (khoét hình trái tim bằng evenodd) -->
+  <path fill="#fff" fill-rule="evenodd" d="
+    M290 224 H480 C650 224 760 340 760 512 C760 684 650 800 480 800 H290 Z
+    M520 640 C440 584 392 540 392 492 C392 456 420 432 452 432 C480 432 506 447 520 472
+    C534 447 560 432 588 432 C620 432 648 456 648 492 C648 540 600 584 520 640 Z"/>
+</svg>

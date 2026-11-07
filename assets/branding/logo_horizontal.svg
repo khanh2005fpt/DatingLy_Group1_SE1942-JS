@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 260" width="900" height="260">
+  <title>DatingLy – logo ngang</title>
+  <defs>
+    <linearGradient id="g" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0" stop-color="#FD297B"/>
+      <stop offset="1" stop-color="#FF655B"/>
+    </linearGradient>
+  </defs>
+  <g transform="translate(20 10) scale(0.47)">
+    <rect width="512" height="512" rx="115" fill="url(#g)"/>
+    <g transform="rotate(14 290 270)">
+      <rect x="176" y="98" width="200" height="280" rx="34" fill="#FFFFFF" opacity="0.45"/>
+    </g>
+    <g transform="rotate(-10 235 280)">
+      <rect x="135" y="125" width="210" height="290" rx="36" fill="#FFFFFF"/>
+      <path d="M240 320 C 200 290, 175 268, 175 239 C 175 217, 192 202, 212 202 C 226 202, 236 209, 240 219 C 244 209, 254 202, 268 202 C 288 202, 305 217, 305 239 C 305 268, 280 290, 240 320 Z" fill="url(#g)"/>
+    </g>
+  </g>
+  <text x="290" y="150" font-family="Inter, Roboto, Arial, sans-serif" font-size="108" font-weight="800" letter-spacing="2" fill="url(#g)">DatingLy</text>
+  <text x="294" y="198" font-family="Inter, Roboto, Arial, sans-serif" font-size="27" fill="#757575">Lướt qua đời nhau, để lại dấu ấn</text>
+</svg>
