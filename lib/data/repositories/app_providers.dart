@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'data_helper.dart';
 import 'setting_repository.dart';
 import 'auth_repository.dart';
+import 'phone_auth_repository.dart';
 import 'user_repository.dart';
 import 'discovery_repository.dart';
 import 'chat_repository.dart';
@@ -22,7 +23,11 @@ final authRepositoryProvider = Provider<AuthRepository>((ref) {
   return AuthRepository();
 });
 
-final userRepositoryProvider = Provider<UserRepository>((ref) {
+final phoneAuthRepositoryProvider = Provider<PhoneAuthRepository>((ref) {
+  return PhoneAuthRepository();
+});
+
+final userRepositoryProvider =Provider<UserRepository>((ref) {
   return UserRepository();
 });
 

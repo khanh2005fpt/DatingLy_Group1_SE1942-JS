@@ -5,80 +5,34 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/repositories/app_providers.dart';
 import '../../data/models/user_model.dart';
 import '../../data/repositories/auth_repository.dart';
+import '../../data/repositories/phone_auth_repository.dart';
 import '../../data/repositories/user_repository.dart';
 import '../../data/repositories/setting_repository.dart';
+import 'auth_error_mapper.dart';
+import 'auth_state.dart';
+import 'phone_otp_helper.dart' as phone_fmt;
 
-class AuthState {
-  final bool isLoading;
-  final String? errorMessage;
-  final UserModel? userModel;
-  final bool isAuthenticated;
-
-  // Phone OTP Auth state
-  final String? verificationId;
-  final int? resendToken;
-  final String? phoneNumber;
-  final int resendCountdown;
-  final bool isOtpSent;
-
-  const AuthState({
-    this.isLoading = false,
-    this.errorMessage,
-    this.userModel,
-    this.isAuthenticated = false,
-    this.verificationId,
-    this.resendToken,
-    this.phoneNumber,
-    this.resendCountdown = 0,
-    this.isOtpSent = false,
-  });
-
-  bool get onboardingCompleted =>
-      userModel?.onboardingCompleted == true ||
-      (userModel != null && userModel!.fullName.trim().isNotEmpty);
-
-  AuthState copyWith({
-    bool? isLoading,
-    String? errorMessage,
-    bool clearError = false,
-    UserModel? userModel,
-    bool? isAuthenticated,
-    String? verificationId,
-    int? resendToken,
-    String? phoneNumber,
-    int? resendCountdown,
-    bool? isOtpSent,
-  }) {
-    return AuthState(
-      isLoading: isLoading ?? this.isLoading,
-      errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
-      userModel: userModel ?? this.userModel,
-      isAuthenticated: isAuthenticated ?? this.isAuthenticated,
-      verificationId: verificationId ?? this.verificationId,
-      resendToken: resendToken ?? this.resendToken,
-      phoneNumber: phoneNumber ?? this.phoneNumber,
-      resendCountdown: resendCountdown ?? this.resendCountdown,
-      isOtpSent: isOtpSent ?? this.isOtpSent,
-    );
-  }
-}
+export 'auth_state.dart';
 
 class AuthViewModel extends Notifier<AuthState> {
   AuthRepository get _authRepo => ref.read(authRepositoryProvider);
+  PhoneAuthRepository get _phoneRepo => ref.read(phoneAuthRepositoryProvider);
   UserRepository get _userRepo => ref.read(userRepositoryProvider);
   SettingRepository get _settingRepo => ref.read(settingRepositoryProvider);
 
-  Timer? _countdownTimer;
+  final phone_fmt.OtpResendTimer _resendTimer = phone_fmt.OtpResendTimer();
 
   @override
   AuthState build() {
-    ref.onDispose(() {
-      _countdownTimer?.cancel();
-    });
+    ref.onDispose(_resendTimer.cancel);
 
     Future.microtask(_initCurrentUser);
     return const AuthState();
   }
+
+  // ---------------------------------------------------------------------------
+  // Khởi tạo phiên đăng nhập
+  // ---------------------------------------------------------------------------
 
   Future<void> _initCurrentUser() async {
     final currentFirebaseUser = _authRepo.currentUser;
@@ -108,15 +62,11 @@ class AuthViewModel extends Notifier<AuthState> {
     }
   }
 
-  String formatPhoneNumber(String raw) {
-    var cleaned = raw.replaceAll(RegExp(r'\s+|-'), '').trim();
-    if (cleaned.startsWith('0')) {
-      cleaned = '+84${cleaned.substring(1)}';
-    } else if (!cleaned.startsWith('+')) {
-      cleaned = '+84$cleaned';
-    }
-    return cleaned;
-  }
+  // ---------------------------------------------------------------------------
+  // Phone OTP
+  // ---------------------------------------------------------------------------
+
+  String formatPhoneNumber(String raw) => phone_fmt.formatPhoneNumber(raw);
 
   Future<bool> sendPhoneOtp(String rawPhone) async {
     final phone = formatPhoneNumber(rawPhone);
@@ -133,31 +83,21 @@ class AuthViewModel extends Notifier<AuthState> {
       phoneNumber: phone,
     );
 
-    // Hỗ trợ số điện thoại thử nghiệm demo PRM393 (Ví dụ: 0988888888 / +84988888888 / +84123456789)
-    if (phone == '+84988888888' ||
-        phone == '+84123456789' ||
-        phone == '+84999999999') {
+    if (phone_fmt.isDemoPhoneNumber(phone)) {
       await Future.delayed(const Duration(milliseconds: 500));
-      state = state.copyWith(
-        isLoading: false,
-        verificationId: 'demo_verification_id',
-        resendToken: 12345,
-        isOtpSent: true,
-      );
-      startResendTimer(60);
+      _enterDemoOtpMode();
       return true;
     }
 
     final completer = Completer<bool>();
 
     try {
-      await _authRepo.verifyPhoneNumber(
+      await _phoneRepo.verifyPhoneNumber(
         phoneNumber: phone,
         resendToken: state.resendToken,
         verificationCompleted: (PhoneAuthCredential credential) async {
           try {
-            final cred =
-                await FirebaseAuth.instance.signInWithCredential(credential);
+            final cred = await _phoneRepo.signInWithCredential(credential);
             await _onAuthSuccess(cred.user!.uid, phoneNumber: phone);
             if (!completer.isCompleted) completer.complete(true);
           } catch (e) {
@@ -171,7 +111,7 @@ class AuthViewModel extends Notifier<AuthState> {
         verificationFailed: (FirebaseAuthException e) {
           state = state.copyWith(
             isLoading: false,
-            errorMessage: _mapFirebaseError(e.code),
+            errorMessage: mapFirebaseAuthError(e.code),
           );
           if (!completer.isCompleted) completer.complete(false);
         },
@@ -190,18 +130,9 @@ class AuthViewModel extends Notifier<AuthState> {
         },
       );
     } catch (e) {
-      // Fallback hỗ trợ môi trường không có SMS Native (Desktop / Test)
-      final errStr = e.toString().toLowerCase();
-      if (errStr.contains('unimplemented') ||
-          errStr.contains('notsupported') ||
-          errStr.contains('platform')) {
-        state = state.copyWith(
-          isLoading: false,
-          verificationId: 'demo_verification_id',
-          resendToken: 12345,
-          isOtpSent: true,
-        );
-        startResendTimer(60);
+      if (_isSmsUnsupportedError(e)) {
+        // Fallback hỗ trợ môi trường không có SMS Native (Desktop / Test)
+        _enterDemoOtpMode();
         if (!completer.isCompleted) completer.complete(true);
       } else {
         state = state.copyWith(
@@ -215,23 +146,34 @@ class AuthViewModel extends Notifier<AuthState> {
     return completer.future;
   }
 
+  bool _isSmsUnsupportedError(Object e) {
+    final errStr = e.toString().toLowerCase();
+    return errStr.contains('unimplemented') ||
+        errStr.contains('notsupported') ||
+        errStr.contains('platform');
+  }
+
+  void _enterDemoOtpMode() {
+    state = state.copyWith(
+      isLoading: false,
+      verificationId: phone_fmt.demoVerificationId,
+      resendToken: 12345,
+      isOtpSent: true,
+    );
+    startResendTimer(60);
+  }
+
   /// Bắt đầu bộ đếm ngược gửi lại mã OTP (mặc định 60s)
   void startResendTimer([int seconds = 60]) {
-    _countdownTimer?.cancel();
-    state = state.copyWith(resendCountdown: seconds);
-    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (state.resendCountdown <= 1) {
-        timer.cancel();
-        state = state.copyWith(resendCountdown: 0);
-      } else {
-        state = state.copyWith(resendCountdown: state.resendCountdown - 1);
-      }
-    });
+    _resendTimer.start(
+      seconds,
+      (remaining) => state = state.copyWith(resendCountdown: remaining),
+    );
   }
 
   /// Hủy và reset bộ đếm thời gian gửi lại OTP
   void cancelResendTimer() {
-    _countdownTimer?.cancel();
+    _resendTimer.cancel();
     state = state.copyWith(resendCountdown: 0);
   }
 
@@ -243,7 +185,7 @@ class AuthViewModel extends Notifier<AuthState> {
   }
 
   void resetPhoneAuth() {
-    _countdownTimer?.cancel();
+    _resendTimer.cancel();
     state = state.copyWith(
       isOtpSent: false,
       verificationId: null,
@@ -271,41 +213,21 @@ class AuthViewModel extends Notifier<AuthState> {
 
     state = state.copyWith(isLoading: true, clearError: true);
 
-    // Hỗ trợ chế độ demo / thử nghiệm
-    if (vId == 'demo_verification_id') {
-      await Future.delayed(const Duration(milliseconds: 500));
-      if (code == '123456' || code == '666666' || code.length == 6) {
-        try {
-          final cred = await FirebaseAuth.instance.signInAnonymously();
-          await _onAuthSuccess(cred.user!.uid, phoneNumber: state.phoneNumber);
-          return true;
-        } catch (_) {
-          final mockUid =
-              'user_phone_${state.phoneNumber?.replaceAll(RegExp(r'\D'), '') ?? "demo"}';
-          await _onAuthSuccess(mockUid, phoneNumber: state.phoneNumber);
-          return true;
-        }
-      } else {
-        state = state.copyWith(
-          isLoading: false,
-          errorMessage: 'Mã OTP không chính xác. Mã thử nghiệm là 123456.',
-        );
-        return false;
-      }
+    if (vId == phone_fmt.demoVerificationId) {
+      return _verifyDemoOtp(code);
     }
 
     try {
-      final cred = await _authRepo.signInWithPhoneOtp(
+      final cred = await _phoneRepo.signInWithOtp(
         verificationId: vId,
         smsCode: code,
       );
-      final uid = cred.user!.uid;
-      await _onAuthSuccess(uid, phoneNumber: state.phoneNumber);
+      await _onAuthSuccess(cred.user!.uid, phoneNumber: state.phoneNumber);
       return true;
     } on FirebaseAuthException catch (e) {
       state = state.copyWith(
         isLoading: false,
-        errorMessage: _mapFirebaseError(e.code),
+        errorMessage: mapFirebaseAuthError(e.code),
       );
       return false;
     } catch (e) {
@@ -317,36 +239,44 @@ class AuthViewModel extends Notifier<AuthState> {
     }
   }
 
-  Future<bool> signIn(String email, String password) async {
-    state = state.copyWith(isLoading: true, clearError: true);
-    try {
-      final cred = await _authRepo.signInWithEmail(email, password);
-      final uid = cred.user!.uid;
-      await _onAuthSuccess(uid, email: email);
+  /// Chế độ demo / thử nghiệm: chấp nhận mọi mã 6 chữ số.
+  Future<bool> _verifyDemoOtp(String code) async {
+    await Future.delayed(const Duration(milliseconds: 500));
+    if (code == '123456' || code == '666666' || code.length == 6) {
+      try {
+        final cred = await _phoneRepo.signInAnonymously();
+        await _onAuthSuccess(cred.user!.uid, phoneNumber: state.phoneNumber);
+      } catch (_) {
+        final mockUid =
+            'user_phone_${state.phoneNumber?.replaceAll(RegExp(r'\D'), '') ?? "demo"}';
+        await _onAuthSuccess(mockUid, phoneNumber: state.phoneNumber);
+      }
       return true;
-    } on FirebaseAuthException catch (e) {
-      state = state.copyWith(
-        isLoading: false,
-        errorMessage: _mapFirebaseError(e.code),
-      );
-      return false;
-    } catch (e) {
-      state = state.copyWith(
-        isLoading: false,
-        errorMessage: 'Có lỗi xảy ra: $e',
-      );
-      return false;
     }
+    state = state.copyWith(
+      isLoading: false,
+      errorMessage: 'Mã OTP không chính xác. Mã thử nghiệm là 123456.',
+    );
+    return false;
   }
 
-  Future<bool> signUp(String email, String password) async {
-    state = state.copyWith(isLoading: true, clearError: true);
-    try {
+  // ---------------------------------------------------------------------------
+  // Email
+  // ---------------------------------------------------------------------------
+
+  Future<bool> signIn(String email, String password) {
+    return _runEmailAuth(() async {
+      final cred = await _authRepo.signInWithEmail(email, password);
+      await _onAuthSuccess(cred.user!.uid, email: email);
+    });
+  }
+
+  Future<bool> signUp(String email, String password) {
+    return _runEmailAuth(() async {
       final cred = await _authRepo.signUpWithEmail(email, password);
-      final uid = cred.user!.uid;
 
       final initialUser = UserModel(
-        id: uid,
+        id: cred.user!.uid,
         email: email.trim(),
         createdAt: DateTime.now(),
       );
@@ -358,11 +288,19 @@ class AuthViewModel extends Notifier<AuthState> {
         isAuthenticated: true,
         userModel: initialUser,
       );
+    });
+  }
+
+  /// Bao loading + xử lý lỗi chung cho đăng nhập / đăng ký Email.
+  Future<bool> _runEmailAuth(Future<void> Function() action) async {
+    state = state.copyWith(isLoading: true, clearError: true);
+    try {
+      await action();
       return true;
     } on FirebaseAuthException catch (e) {
       state = state.copyWith(
         isLoading: false,
-        errorMessage: _mapFirebaseError(e.code),
+        errorMessage: mapFirebaseAuthError(e.code),
       );
       return false;
     } catch (e) {
@@ -373,6 +311,10 @@ class AuthViewModel extends Notifier<AuthState> {
       return false;
     }
   }
+
+  // ---------------------------------------------------------------------------
+  // Profile sau đăng nhập
+  // ---------------------------------------------------------------------------
 
   Future<void> _onAuthSuccess(
     String uid, {
@@ -459,44 +401,12 @@ class AuthViewModel extends Notifier<AuthState> {
   }
 
   Future<void> signOut() async {
-    _countdownTimer?.cancel();
+    _resendTimer.cancel();
     await _authRepo.signOut();
     await _settingRepo.clearCachedUserProfile();
     state = const AuthState();
-  }
-
-  String _mapFirebaseError(String code) {
-    switch (code) {
-      case 'invalid-phone-number':
-        return 'Số điện thoại không đúng định dạng. Vui lòng kiểm tra lại.';
-      case 'invalid-verification-code':
-        return 'Mã OTP không chính xác. Vui lòng thử lại.';
-      case 'session-expired':
-        return 'Mã OTP đã hết hiệu lực. Vui lòng nhấn gửi lại mã.';
-      case 'quota-exceeded':
-        return 'Hạn mức SMS của dịch vụ tạm thời vượt quá. Vui lòng thử lại sau.';
-      case 'too-many-requests':
-        return 'Bạn đã thử quá nhiều lần. Vui lòng đợi trong giây lát rồi thử lại.';
-      case 'user-disabled':
-        return 'Tài khoản của bạn đã bị tạm khóa.';
-      case 'user-not-found':
-      case 'wrong-password':
-      case 'invalid-credential':
-        return 'Thông tin đăng nhập không chính xác.';
-      case 'email-already-in-use':
-        return 'Email này đã được sử dụng cho tài khoản khác.';
-      case 'invalid-email':
-        return 'Địa chỉ email không đúng định dạng.';
-      case 'weak-password':
-        return 'Mật khẩu quá yếu (yêu cầu ít nhất 6 ký tự).';
-      case 'network-request-failed':
-        return 'Không thể kết nối Internet. Vui lòng kiểm tra mạng.';
-      default:
-        return 'Lỗi xác thực ($code). Vui lòng thử lại.';
-    }
   }
 }
 
 final authViewModelProvider =
     NotifierProvider<AuthViewModel, AuthState>(AuthViewModel.new);
-
