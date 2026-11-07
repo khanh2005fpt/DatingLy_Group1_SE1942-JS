@@ -1,5 +1,5 @@
 import 'package:flutter/foundation.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path/path.dart' as p;
@@ -9,6 +9,8 @@ import '../../data/models/user_model.dart';
 import '../../data/repositories/app_providers.dart';
 import '../../data/repositories/setting_repository.dart';
 import '../../data/repositories/user_repository.dart';
+
+part 'settings_view_model.g.dart';
 
 // ─── State ───────────────────────────────────────────────────────────────────
 
@@ -42,7 +44,8 @@ class SettingsState {
 
 // ─── ViewModel ───────────────────────────────────────────────────────────────
 
-class SettingsViewModel extends Notifier<SettingsState> {
+@riverpod
+class SettingsViewModel extends _$SettingsViewModel {
   SettingRepository get _settingRepo => ref.read(settingRepositoryProvider);
   UserRepository get _userRepo => ref.read(userRepositoryProvider);
 
@@ -252,8 +255,3 @@ class SettingsViewModel extends Notifier<SettingsState> {
     }
   }
 }
-
-// ─── Provider ────────────────────────────────────────────────────────────────
-
-final settingsViewModelProvider =
-    NotifierProvider<SettingsViewModel, SettingsState>(SettingsViewModel.new);

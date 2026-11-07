@@ -1,4 +1,4 @@
-﻿import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/match_model.dart';
 import '../models/message_model.dart';
 import 'data_helper.dart';

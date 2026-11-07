@@ -51,7 +51,7 @@ final notificationBootstrapProvider = Provider<void>((ref) {
         );
       } else if (match.unreadCount > old.unreadCount &&
           // Đang mở đúng phòng chat đó thì không cần báo
-          !ref.exists(messagesStreamProvider(match.id))) {
+          !ref.read(messagesStreamProvider(match.id).exists)) {
         notifications.showNotification(
           title: name,
           body: match.lastMessage ?? 'Bạn có tin nhắn mới',
