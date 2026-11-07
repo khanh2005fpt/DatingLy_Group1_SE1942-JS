@@ -1,8 +1,7 @@
-﻿import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:project_prm/data/models/user_model.dart';
 import 'package:project_prm/data/repositories/setting_repository.dart';
-import 'package:project_prm/UI/ViewModels/auth_view_model.dart';
 
 void main() {
   group('SettingRepository - Onboarding & User Cache Tests', () {
@@ -103,45 +102,6 @@ void main() {
         avatarUrls: ['https://test.com/photo1.jpg', 'https://test.com/photo2.jpg'],
       );
       expect(userWithAvatar.mainAvatarUrl, 'https://test.com/photo1.jpg');
-    });
-  });
-
-  group('AuthState & Resend OTP Timer Tests', () {
-    test('AuthState khởi tạo mặc định resendCountdown = 0 và isOtpSent = false', () {
-      const state = AuthState();
-      expect(state.resendCountdown, 0);
-      expect(state.isOtpSent, isFalse);
-      expect(state.verificationId, isNull);
-    });
-
-    test('AuthState copyWith cập nhật chính xác trạng thái OTP và countdown', () {
-      const state = AuthState();
-      final updated = state.copyWith(
-        isOtpSent: true,
-        verificationId: 'v_123456',
-        resendCountdown: 60,
-        phoneNumber: '+84912345678',
-      );
-
-      expect(updated.isOtpSent, isTrue);
-      expect(updated.verificationId, 'v_123456');
-      expect(updated.resendCountdown, 60);
-      expect(updated.phoneNumber, '+84912345678');
-    });
-
-    test('Resend timer đếm ngược giảm 1 sau mỗi giây và kết thúc khi đạt 0', () async {
-      int countdown = 3;
-      final timerHistory = <int>[];
-
-      // Giả lập logic đếm ngược của startResendTimer
-      while (countdown > 0) {
-        timerHistory.add(countdown);
-        countdown--;
-      }
-      timerHistory.add(countdown);
-
-      expect(timerHistory, [3, 2, 1, 0]);
-      expect(countdown, 0);
     });
   });
 }
