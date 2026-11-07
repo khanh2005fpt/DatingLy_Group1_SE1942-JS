@@ -1,11 +1,11 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:project_prm/core/utils/geo_utils.dart';
+import 'package:project_prm/data/repositories/geo_utils.dart';
 import 'package:project_prm/data/models/discovery_filter.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:project_prm/data/models/user_model.dart';
-import 'package:project_prm/data/services/firestore_service.dart';
-import 'package:project_prm/data/services/preferences_service.dart';
+import 'package:project_prm/data/repositories/discovery_repository.dart';
+import 'package:project_prm/data/repositories/setting_repository.dart';
 
 void main() {
   group('passesDiscoveryFilter', () {
@@ -58,7 +58,7 @@ void main() {
 
   test('filter: mặc định khi chưa lưu', () async {
     SharedPreferences.setMockInitialValues({});
-    final p = await PreferencesService.init();
+    final p = await SettingRepository.init();
     final f = p.loadDiscoveryFilter();
     expect(f.minAge, 18);
     expect(f.maxAge, 35);
@@ -68,7 +68,7 @@ void main() {
 
   test('filter: lưu rồi đọc lại đúng 4 key', () async {
     SharedPreferences.setMockInitialValues({});
-    final p = await PreferencesService.init();
+    final p = await SettingRepository.init();
     await p.saveDiscoveryFilter(const DiscoveryFilter(
       minAge: 22,
       maxAge: 40,
