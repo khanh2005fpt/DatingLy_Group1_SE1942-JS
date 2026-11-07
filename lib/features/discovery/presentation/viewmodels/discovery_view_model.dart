@@ -189,9 +189,20 @@ class DiscoveryViewModel extends Notifier<DiscoveryState> {
     } catch (e) {
       debugPrint('Discovery loadMore error: $e');
       if (gen == _generation) {
-        state = state.copyWith(isLoadingMore: false, hasMore: false);
+        state = state.copyWith(
+          isLoadingMore: false,
+          hasMore: false,
+          errorMessage: 'Không tải thêm được gợi ý: $e',
+        );
       }
     }
+  }
+
+  /// Gọi sau khi rewind (xóa swipe) để người đó hiện lại trong Discovery.
+  /// reload() đọc lại danh sách loại trừ từ Firestore nên swipe đã xóa không còn chặn.
+  Future<void> restore(String userId) {
+    _excluded.remove(userId);
+    return reload();
   }
 
   /// Khoảng cách (km) tới [user], null nếu thiếu vị trí.
@@ -226,7 +237,8 @@ final discoveryViewModelProvider =
     NotifierProvider<DiscoveryViewModel, DiscoveryState>(
         DiscoveryViewModel.new);
 
-/// Tổng số match của mình (hiển thị badge ở icon chat).
-final matchCountProvider = Provider<int>((ref) {
-  return ref.watch(matchesStreamProvider).value?.length ?? 0;
+/// Tổng số tin chưa đọc trên mọi match (badge ở icon chat).
+final unreadCountProvider = Provider<int>((ref) {
+  final matches = ref.watch(matchesStreamProvider).value ?? const [];
+  return matches.fold(0, (s, m) => s + m.unreadCount);
 });
