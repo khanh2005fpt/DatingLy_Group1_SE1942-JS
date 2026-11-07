@@ -5,8 +5,8 @@ import 'package:firebase_core/firebase_core.dart';
 
 import 'firebase_options.dart';
 import 'data/repositories/app_providers.dart';
-import 'data/repositories/setting_repository.dart';
 import 'data/repositories/notification_repository.dart';
+import 'data/repositories/setting_repository.dart';
 import 'UI/ViewModels/notification_bootstrap.dart';
 import 'UI/ViewModels/preferences_view_model.dart';
 import 'UI/app_theme.dart';
@@ -30,6 +30,8 @@ Future<void> main() async {
 
   // 3. Khởi tạo Notification Repository (FCM & Local Notifications)
   final notificationRepository = NotificationRepository(settingRepository);
+  // Bấm vào thông báo (local hoặc FCM) -> mở đúng màn hình như /chat/{id}, /likes
+  notificationRepository.onRoute = (route) => AppRouter.router.push(route);
   try {
     await notificationRepository.init();
   } catch (e) {
@@ -46,6 +48,11 @@ Future<void> main() async {
       child: const DatingLyApp(),
     ),
   );
+
+  // App được mở từ thông báo khi đã tắt hẳn: điều hướng sau khi UI đã dựng xong
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    notificationRepository.handleInitialMessage();
+  });
 }
 
 class DatingLyApp extends ConsumerWidget {

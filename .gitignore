@@ -45,3 +45,7 @@ app.*.map.json
 /android/app/release
 # Widget Preview related
 .widget_preview/
+
+# Push server: khóa service account và thư viện
+tools/push_server/node_modules/
+tools/push_server/serviceAccountKey.json

@@ -2,22 +2,26 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../../data/repositories/app_providers.dart';
 import '../../app_colors.dart';
 import '../../../data/models/user_model.dart';
 import 'view_profile_screen.dart';
 import '../../ViewModels/discovery_view_model.dart';
+import '../Widget/app_image.dart';
+
+part 'who_liked_you_screen.g.dart';
 
 /// Đặt true để làm mờ ảnh kiểu "Tinder Gold".
 const bool kBlurLikedYou = false;
 
-/// Danh sách người đã thích mình mà mình chưa quẹt lại.
-final whoLikedMeProvider =
-    FutureProvider.autoDispose<List<UserModel>>((ref) async {
+/// Danh sách người đã thích mình mà mình chưa quẹt lại (autoDispose mặc định).
+@riverpod
+Future<List<UserModel>> whoLikedMe(Ref ref) async {
   final myId = ref.watch(authRepositoryProvider).currentUser?.uid;
   if (myId == null) return [];
   return ref.read(discoveryRepositoryProvider).getUsersWhoLikedMe(myId);
-});
+}
 
 class WhoLikedYouScreen extends ConsumerWidget {
   const WhoLikedYouScreen({super.key});
@@ -149,7 +153,7 @@ class _LikerTile extends StatelessWidget {
               ),
             ),
           )
-        : Image.network(photo, fit: BoxFit.cover,
+        : Image(image: appImageProvider(photo), fit: BoxFit.cover,
             errorBuilder: (_, _, _) => Container(color: Colors.grey[300]));
 
     if (kBlurLikedYou) {

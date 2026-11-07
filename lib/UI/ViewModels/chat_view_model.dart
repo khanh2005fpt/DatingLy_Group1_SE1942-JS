@@ -1,25 +1,29 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../data/repositories/app_providers.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../data/models/match_model.dart';
 import '../../data/models/message_model.dart';
+import '../../data/repositories/app_providers.dart';
 import '../../data/repositories/auth_repository.dart';
 import '../../data/repositories/chat_repository.dart';
 
-// StreamProvider danh sách Matches
-final matchesStreamProvider = StreamProvider<List<MatchModel>>((ref) {
+part 'chat_view_model.g.dart';
+
+// Stream danh sách Matches
+@Riverpod(keepAlive: true)
+Stream<List<MatchModel>> matchesStream(Ref ref) {
   final myId = ref.watch(authStateChangesProvider).value?.uid;
   final chatRepo = ref.watch(chatRepositoryProvider);
 
   if (myId == null) return Stream.value([]);
   return chatRepo.streamMatches(myId);
-});
+}
 
-// StreamProvider danh sách tin nhắn theo matchId
-final messagesStreamProvider =
-    StreamProvider.family<List<MessageModel>, String>((ref, matchId) {
+// Stream tin nhắn theo matchId (autoDispose: chỉ tồn tại khi đang mở phòng chat,
+// notification_bootstrap dựa vào ref.exists để biết có đang mở phòng đó không)
+@riverpod
+Stream<List<MessageModel>> messagesStream(Ref ref, String matchId) {
   final chatRepo = ref.watch(chatRepositoryProvider);
   return chatRepo.streamMessages(matchId);
-});
+}
 
 class ChatViewModel {
   final ChatRepository _chatRepo;
@@ -58,10 +62,11 @@ class ChatViewModel {
   }
 }
 
-final chatViewModelProvider = Provider<ChatViewModel>((ref) {
+@Riverpod(keepAlive: true)
+ChatViewModel chatViewModel(Ref ref) {
   return ChatViewModel(
     chatRepo: ref.watch(chatRepositoryProvider),
     authRepo: ref.watch(authRepositoryProvider),
   );
-});
+}
 

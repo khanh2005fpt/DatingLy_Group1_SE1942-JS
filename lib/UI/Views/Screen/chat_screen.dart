@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../../data/repositories/ai_repository.dart';
 import 'view_profile_screen.dart';
 import '../../ViewModels/chat_view_model.dart';
+import '../Widget/app_image.dart';
 
 class ChatScreen extends ConsumerStatefulWidget {
   final String matchId;
@@ -412,7 +413,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 radius: 20,
                 backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
                 backgroundImage: avatarUrl != null
-                    ? NetworkImage(avatarUrl)
+                    ? appImageProvider(avatarUrl)
                     : null,
                 child: avatarUrl == null
                     ? Text(

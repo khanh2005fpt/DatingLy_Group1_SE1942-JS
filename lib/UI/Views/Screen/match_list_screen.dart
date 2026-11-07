@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../app_colors.dart';
 import '../../../data/models/match_model.dart';
 import '../../ViewModels/chat_view_model.dart';
+import '../Widget/app_image.dart';
 
 class MatchListScreen extends ConsumerWidget {
   const MatchListScreen({super.key});
@@ -112,7 +113,7 @@ class MatchListScreen extends ConsumerWidget {
                       radius: 28,
                       backgroundColor: Colors.grey.withValues(alpha: 0.25),
                       backgroundImage: (avatar != null && avatar.isNotEmpty)
-                          ? NetworkImage(avatar)
+                          ? appImageProvider(avatar)
                           : null,
                       child: (avatar == null || avatar.isEmpty)
                           ? Text(

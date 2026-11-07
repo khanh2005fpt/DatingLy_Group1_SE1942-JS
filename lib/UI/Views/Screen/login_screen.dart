@@ -310,12 +310,26 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                       dividerColor: Colors.transparent,
                       tabs: const [
                         Tab(
-                          icon: Icon(Icons.phone_iphone_rounded, size: 18),
-                          text: 'Số điện thoại',
+                          height: 38,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.phone_iphone_rounded, size: 18),
+                              SizedBox(width: 6),
+                              Text('Số điện thoại'),
+                            ],
+                          ),
                         ),
                         Tab(
-                          icon: Icon(Icons.email_outlined, size: 18),
-                          text: 'Email',
+                          height: 38,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.email_outlined, size: 18),
+                              SizedBox(width: 6),
+                              Text('Email'),
+                            ],
+                          ),
                         ),
                       ],
                     ),

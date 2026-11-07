@@ -8,6 +8,7 @@ import '../../../data/models/user_model.dart';
 import '../../ViewModels/discovery_view_model.dart';
 import 'who_liked_you_screen.dart';
 import 'view_profile_screen.dart';
+import '../Widget/app_image.dart';
 
 class DiscoveryScreen extends ConsumerStatefulWidget {
   const DiscoveryScreen({super.key});
@@ -126,7 +127,7 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
               if (avatarUrl != null)
                 CircleAvatar(
                   radius: 45,
-                  backgroundImage: NetworkImage(avatarUrl),
+                  backgroundImage: appImageProvider(avatarUrl),
                 )
               else
                 const CircleAvatar(
@@ -555,8 +556,8 @@ class _SwipeCardState extends State<_SwipeCard> {
           fit: StackFit.expand,
           children: [
             photoUrls.isNotEmpty
-                ? Image.network(
-                    photoUrls[_currentImageIndex],
+                ? Image(
+                    image: appImageProvider(photoUrls[_currentImageIndex]),
                     fit: BoxFit.cover,
                     errorBuilder: (context, error, stackTrace) => Container(
                       color: Colors.grey[300],

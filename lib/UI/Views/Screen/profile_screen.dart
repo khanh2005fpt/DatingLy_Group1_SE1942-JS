@@ -6,6 +6,7 @@ import '../../../data/models/user_model.dart';
 import '../../ViewModels/auth_view_model.dart';
 import '../../ViewModels/profile_view_model.dart';
 import '../../ViewModels/preferences_view_model.dart';
+import '../Widget/app_image.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
@@ -331,8 +332,8 @@ class _PhotoGalleryState extends State<_PhotoGallery> {
           itemCount: widget.photoUrls.length,
           onPageChanged: (i) => setState(() => _currentIndex = i),
           itemBuilder: (context, index) {
-            return Image.network(
-              widget.photoUrls[index],
+            return Image(
+              image: appImageProvider(widget.photoUrls[index]),
               fit: BoxFit.cover,
               errorBuilder: (_, _, _) => Container(
                 color: Colors.grey.shade300,

@@ -1,9 +1,9 @@
 import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../data/repositories/app_providers.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../data/models/user_model.dart';
+import '../../data/repositories/app_providers.dart';
 import '../../data/repositories/auth_repository.dart';
 import '../../data/repositories/phone_auth_repository.dart';
 import '../../data/repositories/user_repository.dart';
@@ -14,7 +14,10 @@ import 'phone_otp_helper.dart' as phone_fmt;
 
 export 'auth_state.dart';
 
-class AuthViewModel extends Notifier<AuthState> {
+part 'auth_view_model.g.dart';
+
+@Riverpod(keepAlive: true)
+class AuthViewModel extends _$AuthViewModel {
   AuthRepository get _authRepo => ref.read(authRepositoryProvider);
   PhoneAuthRepository get _phoneRepo => ref.read(phoneAuthRepositoryProvider);
   UserRepository get _userRepo => ref.read(userRepositoryProvider);
@@ -422,6 +425,3 @@ class AuthViewModel extends Notifier<AuthState> {
     state = const AuthState();
   }
 }
-
-final authViewModelProvider =
-    NotifierProvider<AuthViewModel, AuthState>(AuthViewModel.new);

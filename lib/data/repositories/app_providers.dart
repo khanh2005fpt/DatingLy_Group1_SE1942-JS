@@ -1,4 +1,5 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'data_helper.dart';
 import 'setting_repository.dart';
 import 'auth_repository.dart';
@@ -11,52 +12,49 @@ import 'location_repository.dart';
 import 'ai_repository.dart';
 import 'seed_repository.dart';
 
+part 'app_providers.g.dart';
+
 // --- Data Helper ---
-final dataHelperProvider = Provider<DataHelper>((ref) => DataHelper());
+@Riverpod(keepAlive: true)
+DataHelper dataHelper(Ref ref) => DataHelper();
 
 // --- Repositories (PRM393 MVVM Architecture) ---
-final settingRepositoryProvider = Provider<SettingRepository>((ref) {
+@Riverpod(keepAlive: true)
+SettingRepository settingRepository(Ref ref) {
   throw UnimplementedError('settingRepositoryProvider must be overridden in main.dart');
-});
+}
 
-final authRepositoryProvider = Provider<AuthRepository>((ref) {
-  return AuthRepository();
-});
+@Riverpod(keepAlive: true)
+AuthRepository authRepository(Ref ref) => AuthRepository();
 
-final phoneAuthRepositoryProvider = Provider<PhoneAuthRepository>((ref) {
-  return PhoneAuthRepository();
-});
+@Riverpod(keepAlive: true)
+PhoneAuthRepository phoneAuthRepository(Ref ref) => PhoneAuthRepository();
 
-final userRepositoryProvider =Provider<UserRepository>((ref) {
-  return UserRepository();
-});
+@Riverpod(keepAlive: true)
+UserRepository userRepository(Ref ref) => UserRepository();
 
-final discoveryRepositoryProvider = Provider<DiscoveryRepository>((ref) {
-  return DiscoveryRepository();
-});
+@Riverpod(keepAlive: true)
+DiscoveryRepository discoveryRepository(Ref ref) => DiscoveryRepository();
 
-final chatRepositoryProvider = Provider<ChatRepository>((ref) {
-  return ChatRepository();
-});
+@Riverpod(keepAlive: true)
+ChatRepository chatRepository(Ref ref) => ChatRepository();
 
-final notificationRepositoryProvider = Provider<NotificationRepository>((ref) {
+@Riverpod(keepAlive: true)
+NotificationRepository notificationRepository(Ref ref) {
   throw UnimplementedError('notificationRepositoryProvider must be overridden in main.dart');
-});
+}
 
-final locationRepositoryProvider = Provider<LocationRepository>((ref) {
-  return LocationRepository();
-});
+@Riverpod(keepAlive: true)
+LocationRepository locationRepository(Ref ref) => LocationRepository();
 
-final aiRepositoryProvider = Provider<AiRepository>((ref) {
-  return AiRepository();
-});
+@Riverpod(keepAlive: true)
+AiRepository aiRepository(Ref ref) => AiRepository();
 
-final seedRepositoryProvider = Provider<SeedRepository>((ref) {
-  return SeedRepository();
-});
+@Riverpod(keepAlive: true)
+SeedRepository seedRepository(Ref ref) => SeedRepository();
 
-final authStateChangesProvider = StreamProvider((ref) {
+@Riverpod(keepAlive: true)
+Stream<User?> authStateChanges(Ref ref) {
   final authRepo = ref.watch(authRepositoryProvider);
   return authRepo.authStateChanges;
-});
-
+}

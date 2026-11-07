@@ -1,12 +1,15 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../data/models/match_model.dart';
 import '../../data/repositories/app_providers.dart';
 import 'chat_view_model.dart';
 
+part 'notification_bootstrap.g.dart';
+
 /// Khởi chạy các luồng thông báo của app (watch 1 lần ở root widget):
 ///  1. Lưu FCM token vào Firestore (`users/{uid}.fcm_token`) khi đăng nhập / token đổi.
 ///  2. Hiện local notification khi có match mới hoặc tin nhắn mới.
-final notificationBootstrapProvider = Provider<void>((ref) {
+@Riverpod(keepAlive: true)
+void notificationBootstrap(Ref ref) {
   final notifications = ref.read(notificationRepositoryProvider);
   final userRepo = ref.read(userRepositoryProvider);
   final settings = ref.read(settingRepositoryProvider);
@@ -51,6 +54,9 @@ final notificationBootstrapProvider = Provider<void>((ref) {
         );
       } else if (match.unreadCount > old.unreadCount &&
           // Đang mở đúng phòng chat đó thì không cần báo
+          // riverpod 3.5 đánh dấu ref.exists deprecated nhưng API thay thế
+          // (provider.exist) chưa có trong bản này.
+          // ignore: deprecated_member_use
           !ref.exists(messagesStreamProvider(match.id))) {
         notifications.showNotification(
           title: name,
@@ -60,5 +66,5 @@ final notificationBootstrapProvider = Provider<void>((ref) {
       }
     }
   });
-});
+}
 

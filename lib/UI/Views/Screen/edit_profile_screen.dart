@@ -10,6 +10,7 @@ import '../../app_colors.dart';
 import '../Widget/image_crop_compress_helper.dart';
 import '../Widget/profile_prompts_editor.dart';
 import '../../ViewModels/profile_view_model.dart';
+import '../Widget/app_image.dart';
 
 class _PhotoItem {
   final String? url;
@@ -478,7 +479,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen>
                                   )
                                 : (photo.url != null
                                     ? DecorationImage(
-                                        image: NetworkImage(photo.url!),
+                                        image: appImageProvider(photo.url!),
                                         fit: BoxFit.cover,
                                       )
                                     : null),
@@ -826,8 +827,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen>
           borderRadius: BorderRadius.circular(14),
           child: photo.bytes != null
               ? Image.memory(photo.bytes!, fit: BoxFit.cover)
-              : Image.network(
-                  photo.url!,
+              : Image(
+                  image: appImageProvider(photo.url!),
                   fit: BoxFit.cover,
                   errorBuilder: (context, error, stackTrace) => Container(
                     color: Colors.grey[300],
@@ -1225,8 +1226,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen>
       return Image.memory(item.bytes!, fit: BoxFit.cover);
     }
     if (item.url != null) {
-      return Image.network(
-        item.url!,
+      return Image(
+        image: appImageProvider(item.url!),
         fit: BoxFit.cover,
         errorBuilder: (context, error, stackTrace) => Container(
           color: Colors.grey[400],

@@ -1,12 +1,11 @@
-﻿import 'dart:math';
 import 'dart:typed_data';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:image_picker/image_picker.dart';
 import '../models/user_model.dart';
 import 'data_helper.dart';
+import 'photo_codec.dart';
 
-/// UserRepository: Quản lý dữ liệu người dùng trên Firestore & Storage (PRM393 MVVM Pattern)
+/// UserRepository: Quản lý dữ liệu người dùng trên Firestore (PRM393 MVVM Pattern)
 class UserRepository {
   final DataHelper _helper = DataHelper();
 
@@ -47,51 +46,34 @@ class UserRepository {
         .set({'location': location}, SetOptions(merge: true));
   }
 
-  // Upload ảnh đại diện (XFile)
+  // --- Ảnh hồ sơ ---
+  // Không dùng Firebase Storage (cần gói Blaze). Ảnh được nén rồi lưu dạng data URI
+  // (base64) trong `avatar_urls` của document users. Xem PhotoCodec.
+
+  // Chuẩn bị ảnh đại diện (XFile) để lưu vào hồ sơ
   Future<String> uploadAvatar({
     required String userId,
     required XFile imageFile,
   }) async {
-    final ext = imageFile.name.split('.').last.toLowerCase();
-    final fileName = 'avatar_${DateTime.now().millisecondsSinceEpoch}.$ext';
-    final ref = _helper.storage.ref().child('avatars').child(userId).child(fileName);
-
-    final bytes = await imageFile.readAsBytes();
-    final task = await ref.putData(bytes, SettableMetadata(contentType: 'image/$ext'));
-    return await task.ref.getDownloadURL();
+    return PhotoCodec.encode(await imageFile.readAsBytes());
   }
 
-  // Upload ảnh trang cá nhân (XFile)
+  // Chuẩn bị ảnh trang cá nhân (XFile) để lưu vào hồ sơ
   Future<String> uploadPhoto({
     required String userId,
     required XFile imageFile,
   }) async {
-    final ext = imageFile.name.split('.').last.toLowerCase();
-    final fileName = 'photo_${DateTime.now().millisecondsSinceEpoch}.$ext';
-    final ref = _helper.storage.ref().child('photos').child(userId).child(fileName);
-
-    final bytes = await imageFile.readAsBytes();
-    final task = await ref.putData(bytes, SettableMetadata(contentType: 'image/$ext'));
-    return await task.ref.getDownloadURL();
+    return PhotoCodec.encode(await imageFile.readAsBytes());
   }
 
-  // Upload dữ liệu ảnh đã qua crop & nén (Uint8List)
+  // Chuẩn bị dữ liệu ảnh đã crop (Uint8List): nén nhỏ và trả về data URI.
+  // [userId], [folder], [extension] giữ lại để tương thích chữ ký cũ.
   Future<String> uploadBytes({
     required String userId,
     required Uint8List bytes,
     required String folder, // 'avatars' hoặc 'photos'
     String extension = 'jpg',
   }) async {
-    final randomSuffix = Random().nextInt(10000);
-    final fileName =
-        '${folder.replaceAll('/', '')}_${DateTime.now().millisecondsSinceEpoch}_$randomSuffix.$extension';
-    final ref = _helper.storage.ref().child(folder).child(userId).child(fileName);
-
-    final task = await ref.putData(
-      bytes,
-      SettableMetadata(contentType: 'image/$extension'),
-    );
-    return await task.ref.getDownloadURL();
+    return PhotoCodec.encode(bytes);
   }
 }
-

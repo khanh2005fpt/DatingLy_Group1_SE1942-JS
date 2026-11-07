@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../data/repositories/app_providers.dart';
 import '../../data/repositories/geo_utils.dart';
 import '../../data/models/discovery_filter.dart';
@@ -8,6 +8,8 @@ import '../../data/models/user_model.dart';
 import '../../data/repositories/discovery_repository.dart';
 import '../../data/repositories/user_repository.dart';
 import 'chat_view_model.dart';
+
+part 'discovery_view_model.g.dart';
 
 enum SwipeAction {
   like('like'),
@@ -58,7 +60,8 @@ class DiscoveryState {
   }
 }
 
-class DiscoveryFilterNotifier extends Notifier<DiscoveryFilter> {
+@Riverpod(keepAlive: true)
+class DiscoveryFilterNotifier extends _$DiscoveryFilterNotifier {
   @override
   DiscoveryFilter build() =>
       ref.read(settingRepositoryProvider).loadDiscoveryFilter();
@@ -69,13 +72,10 @@ class DiscoveryFilterNotifier extends Notifier<DiscoveryFilter> {
   }
 }
 
-final discoveryFilterProvider =
-    NotifierProvider<DiscoveryFilterNotifier, DiscoveryFilter>(
-        DiscoveryFilterNotifier.new);
-
 const int kPrefetchThreshold = 5;
 
-class DiscoveryViewModel extends Notifier<DiscoveryState> {
+@Riverpod(keepAlive: true)
+class DiscoveryViewModel extends _$DiscoveryViewModel {
   Set<String> _excluded = {};
   DocumentSnapshot<Map<String, dynamic>>? _cursor;
   int _generation = 0;
@@ -212,10 +212,7 @@ class DiscoveryViewModel extends Notifier<DiscoveryState> {
   }
 }
 
-final discoveryViewModelProvider =
-    NotifierProvider<DiscoveryViewModel, DiscoveryState>(
-        DiscoveryViewModel.new);
-
-final matchCountProvider = Provider<int>((ref) {
+@Riverpod(keepAlive: true)
+int matchCount(Ref ref) {
   return ref.watch(matchesStreamProvider).value?.length ?? 0;
-});
+}

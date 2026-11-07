@@ -1,6 +1,8 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../data/repositories/app_providers.dart';
 import '../../data/repositories/setting_repository.dart';
+
+part 'preferences_view_model.g.dart';
 
 class PreferencesState {
   final bool isDarkMode;
@@ -27,7 +29,8 @@ class PreferencesState {
   }
 }
 
-class PreferencesViewModel extends Notifier<PreferencesState> {
+@Riverpod(keepAlive: true)
+class PreferencesViewModel extends _$PreferencesViewModel {
   SettingRepository get _settingRepo => ref.read(settingRepositoryProvider);
 
   @override
@@ -54,8 +57,4 @@ class PreferencesViewModel extends Notifier<PreferencesState> {
     state = state.copyWith(genderFilter: gender);
   }
 }
-
-final preferencesViewModelProvider =
-    NotifierProvider<PreferencesViewModel, PreferencesState>(
-        PreferencesViewModel.new);
 

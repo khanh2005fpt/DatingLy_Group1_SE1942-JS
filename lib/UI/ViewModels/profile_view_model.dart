@@ -1,20 +1,23 @@
 import 'dart:typed_data';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
-import '../../data/repositories/app_providers.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../data/models/user_model.dart';
+import '../../data/repositories/app_providers.dart';
 import '../../data/repositories/auth_repository.dart';
 import '../../data/repositories/user_repository.dart';
 import '../../data/repositories/setting_repository.dart';
 
-// StreamProvider hồ sơ cá nhân của người dùng hiện tại
-final myProfileStreamProvider = StreamProvider<UserModel?>((ref) {
+part 'profile_view_model.g.dart';
+
+// Stream hồ sơ cá nhân của người dùng hiện tại
+@Riverpod(keepAlive: true)
+Stream<UserModel?> myProfileStream(Ref ref) {
   final myId = ref.watch(authStateChangesProvider).value?.uid;
   final userRepo = ref.watch(userRepositoryProvider);
 
   if (myId == null) return Stream.value(null);
   return userRepo.streamUserProfile(myId);
-});
+}
 
 class ProfileViewModel {
   final UserRepository _userRepo;
@@ -119,11 +122,12 @@ class ProfileViewModel {
   }
 }
 
-final profileViewModelProvider = Provider<ProfileViewModel>((ref) {
+@Riverpod(keepAlive: true)
+ProfileViewModel profileViewModel(Ref ref) {
   return ProfileViewModel(
     userRepo: ref.watch(userRepositoryProvider),
     authRepo: ref.watch(authRepositoryProvider),
     settingRepo: ref.watch(settingRepositoryProvider),
   );
-});
+}
 

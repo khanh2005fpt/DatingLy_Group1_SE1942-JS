@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../app_colors.dart';
+import '../Widget/app_image.dart';
 
 /// Màn hình xem profile của người khác (hiện ra khi ấn vào thẻ quẹt)
 class ViewProfileScreen extends StatelessWidget {
@@ -363,8 +364,8 @@ class _PhotoGalleryState extends State<_PhotoGallery> {
           controller: _pageController,
           itemCount: widget.photoUrls.length,
           onPageChanged: (i) => setState(() => _currentPage = i),
-          itemBuilder: (context, index) => Image.network(
-            widget.photoUrls[index],
+          itemBuilder: (context, index) => Image(
+            image: appImageProvider(widget.photoUrls[index]),
             fit: BoxFit.cover,
             errorBuilder: (context, error, stack) => Container(
               color: Colors.grey[300],

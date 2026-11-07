@@ -11,10 +11,19 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 
 /// NotificationRepository: Quản lý thông báo đẩy Firebase Cloud Messaging & Local Notifications (PRM393 MVVM Pattern)
 class NotificationRepository {
+  /// Channel Android mức cao: server push (tools/push_server) chỉ định channel này.
+  static const String mainChannelId = 'datingly_main_channel';
+  static const String mainChannelName = 'Thông báo chung';
+  static const String mainChannelDescription =
+      'Kênh nhận thông báo tương hợp và tin nhắn của DatingLy';
+
   final FirebaseMessaging _fcm = FirebaseMessaging.instance;
   final FlutterLocalNotificationsPlugin _localNotifications =
       FlutterLocalNotificationsPlugin();
   final SettingRepository _settingRepository;
+
+  /// Được gọi khi người dùng bấm vào thông báo (route như `/chat/{id}` hoặc `/likes`).
+  void Function(String route)? onRoute;
 
   NotificationRepository(this._settingRepository);
 
@@ -48,8 +57,23 @@ class NotificationRepository {
       settings: initSettings,
       onDidReceiveNotificationResponse: (response) {
         debugPrint('Notification clicked: ${response.payload}');
+        final route = response.payload;
+        if (route != null && route.startsWith('/')) onRoute?.call(route);
       },
     );
+
+    // Tạo channel mức cao để thông báo FCM khi app ở nền cũng hiện popup
+    await _localNotifications
+        .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>()
+        ?.createNotificationChannel(
+          const AndroidNotificationChannel(
+            mainChannelId,
+            mainChannelName,
+            description: mainChannelDescription,
+            importance: Importance.max,
+          ),
+        );
 
     // 4. Lấy và lưu FCM Token
     try {
@@ -70,14 +94,37 @@ class NotificationRepository {
     // 6. Lắng nghe tin nhắn khi App đang ở Foreground
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
       final notification = message.notification;
-      if (notification != null && _settingRepository.notificationsEnabled) {
-        showNotification(
-          title: notification.title ?? 'DatingLy Thông báo',
-          body: notification.body ?? '',
-          payload: message.data['route'],
-        );
+      if (notification == null || !_settingRepository.notificationsEnabled) {
+        return;
       }
+      // Match và tin nhắn mới đã được notification_bootstrap hiện khi app đang mở
+      // (có kiểm tra "đang mở đúng phòng chat"), nên bỏ qua để không báo trùng.
+      final type = message.data['type'];
+      if (type == 'match' || type == 'message') return;
+
+      showNotification(
+        title: notification.title ?? 'DatingLy Thông báo',
+        body: notification.body ?? '',
+        payload: message.data['route'],
+      );
     });
+
+    // 7. Bấm vào thông báo FCM khi app đang ở nền -> mở đúng màn hình
+    FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+      final route = message.data['route'];
+      if (route is String && route.startsWith('/')) onRoute?.call(route);
+    });
+  }
+
+  /// Gọi sau khi UI đã chạy: nếu app được mở từ thông báo (lúc đã tắt hẳn) thì mở đúng màn hình.
+  Future<void> handleInitialMessage() async {
+    try {
+      final message = await _fcm.getInitialMessage();
+      final route = message?.data['route'];
+      if (route is String && route.startsWith('/')) onRoute?.call(route);
+    } catch (e) {
+      debugPrint('getInitialMessage lỗi: $e');
+    }
   }
 
   Future<void> showNotification({
@@ -86,9 +133,9 @@ class NotificationRepository {
     String? payload,
   }) async {
     const androidDetails = AndroidNotificationDetails(
-      'datingly_main_channel',
-      'Thông báo chung',
-      channelDescription: 'Kênh nhận thông báo tương hợp và tin nhắn của DatingLy',
+      mainChannelId,
+      mainChannelName,
+      channelDescription: mainChannelDescription,
       importance: Importance.max,
       priority: Priority.high,
       showWhen: true,
