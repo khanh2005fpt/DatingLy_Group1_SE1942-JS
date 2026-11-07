@@ -1,7 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../data/repositories/app_providers.dart';
+import 'package:image_picker/image_picker.dart';
+
 import '../../data/models/match_model.dart';
 import '../../data/models/message_model.dart';
+import '../../data/repositories/app_providers.dart';
 import '../../data/repositories/auth_repository.dart';
 import '../../data/repositories/chat_repository.dart';
 
@@ -21,6 +23,13 @@ final messagesStreamProvider =
   return chatRepo.streamMessages(matchId);
 });
 
+// FutureProvider lấy tin nhắn cache từ SQLite
+final cachedMessagesFutureProvider =
+    FutureProvider.family<List<MessageModel>, String>((ref, matchId) {
+  final chatRepo = ref.watch(chatRepositoryProvider);
+  return chatRepo.getCachedMessages(matchId);
+});
+
 class ChatViewModel {
   final ChatRepository _chatRepo;
   final AuthRepository _authRepo;
@@ -34,7 +43,7 @@ class ChatViewModel {
   Future<void> sendMessage({
     required String matchId,
     required String content,
-    String type = 'text',
+    String type = MessageModel.typeText,
   }) async {
     final myId = _authRepo.currentUser?.uid;
     if (myId == null || content.trim().isEmpty) return;
@@ -44,6 +53,26 @@ class ChatViewModel {
       senderId: myId,
       content: content.trim(),
       type: type,
+    );
+  }
+
+  Future<void> sendImageMessage({
+    required String matchId,
+    required XFile imageFile,
+  }) async {
+    final myId = _authRepo.currentUser?.uid;
+    if (myId == null) return;
+
+    final imageUrl = await _chatRepo.uploadChatImage(
+      matchId: matchId,
+      imageFile: imageFile,
+    );
+
+    await _chatRepo.sendMessage(
+      matchId: matchId,
+      senderId: myId,
+      content: imageUrl,
+      type: MessageModel.typeImage,
     );
   }
 
@@ -64,4 +93,3 @@ final chatViewModelProvider = Provider<ChatViewModel>((ref) {
     authRepo: ref.watch(authRepositoryProvider),
   );
 });
-
