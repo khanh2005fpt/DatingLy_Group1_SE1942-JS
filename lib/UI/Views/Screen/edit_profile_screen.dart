@@ -106,17 +106,23 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen>
 
       if (!mounted) return;
 
-      final croppedBytes = await ImageCropCompressHelper.showCropDialog(
-        context,
+      final croppedBytes = await ImageCropCompressHelper.cropImage(
+        context: context,
+        sourcePath: picked.path,
         imageBytes: rawBytes,
         aspectRatio: 3 / 4,
       );
 
       if (croppedBytes != null && mounted) {
+        final compressed =
+            await ImageCropCompressHelper.compressImageBytes(croppedBytes);
         setState(() {
-          _photos.add(_PhotoItem(bytes: croppedBytes));
+          _photos.add(_PhotoItem(bytes: compressed));
         });
-        _showToast('Đã thêm ảnh thành công', isSuccess: true);
+        _showToast(
+          'Đã thêm, cắt và nén ảnh thành công (${_photos.length}/6)',
+          isSuccess: true,
+        );
       }
     } catch (e) {
       _showToast('Lỗi khi thêm ảnh: $e');
@@ -126,20 +132,24 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen>
   Future<void> _cropPhoto(int index) async {
     final photo = _photos[index];
     if (photo.bytes == null) {
-      _showToast('Ảnh từ máy chủ không thể chỉnh sửa trực tiếp crop.');
+      _showToast('Chỉ có thể cắt lại ảnh mới thêm trước khi lưu.');
       return;
     }
 
-    final recropped = await ImageCropCompressHelper.showCropDialog(
-      context,
+    final recropped = await ImageCropCompressHelper.cropImage(
+      context: context,
+      sourcePath: null,
       imageBytes: photo.bytes!,
       aspectRatio: 3 / 4,
     );
 
     if (recropped != null && mounted) {
+      final compressed =
+          await ImageCropCompressHelper.compressImageBytes(recropped);
       setState(() {
-        photo.bytes = recropped;
+        photo.bytes = compressed;
       });
+      _showToast('Đã cắt và nén lại ảnh #${index + 1}', isSuccess: true);
     }
   }
 
@@ -155,6 +165,22 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen>
       final item = _photos.removeAt(oldIndex);
       _photos.insert(newIndex, item);
     });
+  }
+
+  void _reorderPhoto(int oldIndex, int newIndex) {
+    if (oldIndex == newIndex) return;
+    if (oldIndex < 0 || oldIndex >= _photos.length) return;
+    if (newIndex < 0 || newIndex >= _photos.length) return;
+    setState(() {
+      final item = _photos.removeAt(oldIndex);
+      _photos.insert(newIndex, item);
+    });
+    _showToast(
+      newIndex == 0
+          ? 'Đã đặt làm ảnh đại diện chính ⭐️'
+          : 'Đã kéo thả đổi thứ tự ảnh',
+      isSuccess: true,
+    );
   }
 
   void _setAsMainAvatar(int index) {
@@ -220,10 +246,13 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen>
         final item = _photos[i];
         if (item.bytes != null) {
           setState(() {
-            _savingStatus = 'Đang tải ảnh ${i + 1}/${_photos.length} lên máy chủ...';
+            _savingStatus =
+                'Đang nén & tải ảnh ${i + 1}/${_photos.length} lên máy chủ...';
           });
+          final compressedBytes =
+              await ImageCropCompressHelper.compressImageBytes(item.bytes!);
           final url = await profileVm.uploadPhotoBytes(
-            item.bytes!,
+            compressedBytes,
             folder: i == 0 ? 'avatars' : 'photos',
           );
           finalUrls.add(url);
@@ -367,8 +396,36 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen>
           ),
           const SizedBox(height: 4),
           Text(
-            'Ảnh đầu tiên là ảnh đại diện. Nhấn mũi tên để đổi thứ tự ảnh.',
+            'Ảnh đầu tiên là ảnh đại diện. Bạn có thể nhấn giữ và kéo thả ảnh để đổi thứ tự.',
             style: TextStyle(color: Colors.grey[600], fontSize: 12),
+          ),
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: AppColors.primary.withValues(alpha: 0.25),
+              ),
+            ),
+            child: const Row(
+              children: [
+                Icon(Icons.touch_app_rounded,
+                    size: 16, color: AppColors.primary),
+                SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    'Kéo thả: Nhấn giữ 1 ảnh rồi kéo sang ô khác để đổi vị trí.',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
           const SizedBox(height: 14),
           GridView.builder(
@@ -386,148 +443,110 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen>
                 final photo = _photos[index];
                 final isAvatar = index == 0;
 
-                return Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(14),
-                      child: photo.bytes != null
-                          ? Image.memory(photo.bytes!, fit: BoxFit.cover)
-                          : Image.network(
-                              photo.url!,
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) => Container(
-                                color: Colors.grey[300],
-                                child: const Icon(Icons.broken_image),
-                              ),
-                            ),
-                    ),
-                    Container(
-                      decoration: BoxDecoration(
+                return DragTarget<int>(
+                  onWillAcceptWithDetails: (details) => details.data != index,
+                  onAcceptWithDetails: (details) {
+                    _reorderPhoto(details.data, index);
+                  },
+                  builder: (context, candidateData, rejectedData) {
+                    final isHovered = candidateData.isNotEmpty;
+                    return LongPressDraggable<int>(
+                      data: index,
+                      delay: const Duration(milliseconds: 150),
+                      feedback: Material(
+                        elevation: 10,
                         borderRadius: BorderRadius.circular(14),
-                        border: Border.all(
-                          color: isAvatar
-                              ? AppColors.primary
-                              : Colors.white.withValues(alpha: 0.6),
-                          width: isAvatar ? 2.5 : 1,
-                        ),
-                      ),
-                    ),
-                    Positioned(
-                      top: 6,
-                      left: 6,
-                      child: GestureDetector(
-                        onTap: () => _setAsMainAvatar(index),
                         child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 2),
+                          width: 105,
+                          height: 140,
                           decoration: BoxDecoration(
-                            color: isAvatar
-                                ? AppColors.primary
-                                : Colors.black.withValues(alpha: 0.65),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            isAvatar ? '⭐️ Chính' : '#${index + 1}',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                            ),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                                color: AppColors.primary, width: 2.5),
+                            image: photo.bytes != null
+                                ? DecorationImage(
+                                    image: MemoryImage(photo.bytes!),
+                                    fit: BoxFit.cover,
+                                  )
+                                : (photo.url != null
+                                    ? DecorationImage(
+                                        image: NetworkImage(photo.url!),
+                                        fit: BoxFit.cover,
+                                      )
+                                    : null),
                           ),
                         ),
                       ),
-                    ),
-                    Positioned(
-                      bottom: 0,
-                      left: 0,
-                      right: 0,
-                      child: Container(
+                      childWhenDragging: Opacity(
+                        opacity: 0.3,
+                        child: _buildEditPhotoCard(photo, index, isAvatar),
+                      ),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 180),
                         decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              Colors.transparent,
-                              Colors.black.withValues(alpha: 0.8),
-                            ],
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                          ),
-                          borderRadius: const BorderRadius.only(
-                            bottomLeft: Radius.circular(14),
-                            bottomRight: Radius.circular(14),
-                          ),
+                          borderRadius: BorderRadius.circular(14),
+                          border: isHovered
+                              ? Border.all(color: AppColors.primary, width: 3)
+                              : null,
                         ),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 2, vertical: 4),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                          children: [
-                            if (photo.bytes != null)
-                              GestureDetector(
-                                onTap: () => _cropPhoto(index),
-                                child: const Icon(Icons.crop,
-                                    color: Colors.white, size: 16),
-                              ),
-                            if (index > 0)
-                              GestureDetector(
-                                onTap: () => _movePhoto(index, index - 1),
-                                child: const Icon(Icons.arrow_back,
-                                    color: Colors.white, size: 16),
-                              ),
-                            if (index < _photos.length - 1)
-                              GestureDetector(
-                                onTap: () => _movePhoto(index, index + 1),
-                                child: const Icon(Icons.arrow_forward,
-                                    color: Colors.white, size: 16),
-                              ),
-                            GestureDetector(
-                              onTap: () => _removePhoto(index),
-                              child: const Icon(Icons.delete_outline,
-                                  color: Colors.redAccent, size: 16),
-                            ),
-                          ],
-                        ),
+                        child: _buildEditPhotoCard(photo, index, isAvatar),
                       ),
-                    ),
-                  ],
+                    );
+                  },
                 );
               }
 
-              return GestureDetector(
-                onTap: _pickAndAddPhoto,
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: Colors.grey[300]!, width: 1.5),
-                  ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withValues(alpha: 0.1),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.add_a_photo_rounded,
-                          color: AppColors.primary,
-                          size: 18,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Thêm ảnh',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: Colors.grey[600],
-                          fontWeight: FontWeight.w500,
+              return DragTarget<int>(
+                onWillAcceptWithDetails: (details) => _photos.isNotEmpty,
+                onAcceptWithDetails: (details) {
+                  _reorderPhoto(details.data, _photos.length - 1);
+                },
+                builder: (context, candidateData, rejectedData) {
+                  final isHovered = candidateData.isNotEmpty;
+                  return GestureDetector(
+                    onTap: _pickAndAddPhoto,
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 180),
+                      decoration: BoxDecoration(
+                        color: isHovered
+                            ? AppColors.primary.withValues(alpha: 0.08)
+                            : Colors.white,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color:
+                              isHovered ? AppColors.primary : Colors.grey[300]!,
+                          width: isHovered ? 2 : 1.5,
                         ),
                       ),
-                    ],
-                  ),
-                ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withValues(alpha: 0.1),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.add_a_photo_rounded,
+                              color: AppColors.primary,
+                              size: 18,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Thêm ảnh',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: Colors.grey[600],
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
               );
             },
           ),
@@ -773,6 +792,114 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen>
           const SizedBox(height: 36),
         ],
       ),
+    );
+  }
+
+  Widget _buildEditPhotoCard(_PhotoItem photo, int index, bool isAvatar) {
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(14),
+          child: photo.bytes != null
+              ? Image.memory(photo.bytes!, fit: BoxFit.cover)
+              : Image.network(
+                  photo.url!,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) => Container(
+                    color: Colors.grey[300],
+                    child: const Icon(Icons.broken_image),
+                  ),
+                ),
+        ),
+        Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: isAvatar
+                  ? AppColors.primary
+                  : Colors.white.withValues(alpha: 0.6),
+              width: isAvatar ? 2.5 : 1,
+            ),
+          ),
+        ),
+        Positioned(
+          top: 6,
+          left: 6,
+          child: GestureDetector(
+            onTap: () => _setAsMainAvatar(index),
+            child: Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: isAvatar
+                    ? AppColors.primary
+                    : Colors.black.withValues(alpha: 0.65),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                isAvatar ? '⭐️ Chính' : '#${index + 1}',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
+        ),
+        Positioned(
+          bottom: 0,
+          left: 0,
+          right: 0,
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Colors.transparent,
+                  Colors.black.withValues(alpha: 0.8),
+                ],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+              ),
+              borderRadius: const BorderRadius.only(
+                bottomLeft: Radius.circular(14),
+                bottomRight: Radius.circular(14),
+              ),
+            ),
+            padding:
+                const EdgeInsets.symmetric(horizontal: 2, vertical: 4),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                if (photo.bytes != null)
+                  GestureDetector(
+                    onTap: () => _cropPhoto(index),
+                    child: const Icon(Icons.crop,
+                        color: Colors.white, size: 16),
+                  ),
+                if (index > 0)
+                  GestureDetector(
+                    onTap: () => _movePhoto(index, index - 1),
+                    child: const Icon(Icons.arrow_back,
+                        color: Colors.white, size: 16),
+                  ),
+                if (index < _photos.length - 1)
+                  GestureDetector(
+                    onTap: () => _movePhoto(index, index + 1),
+                    child: const Icon(Icons.arrow_forward,
+                        color: Colors.white, size: 16),
+                  ),
+                GestureDetector(
+                  onTap: () => _removePhoto(index),
+                  child: const Icon(Icons.delete_outline,
+                      color: Colors.redAccent, size: 16),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 

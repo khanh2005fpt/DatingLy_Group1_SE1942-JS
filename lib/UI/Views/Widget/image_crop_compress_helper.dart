@@ -1,15 +1,36 @@
-import 'dart:typed_data';
 import 'dart:ui' as ui;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
+import 'package:image_cropper/image_cropper.dart';
 import '../../app_colors.dart';
 
 class ImageCropCompressHelper {
-  /// Nén dữ liệu ảnh bằng cách resize kích thước tối đa và tái mã hóa
+  /// Nén dữ liệu ảnh đa tầng bằng flutter_image_compress và tái mã hóa hạ kích thước
   static Future<Uint8List> compressImageBytes(
     Uint8List rawBytes, {
     int targetWidth = 1080,
+    int quality = 80,
   }) async {
+    // Tầng 1: Nén bằng flutter_image_compress (Native plugin hiệu năng cao)
+    try {
+      final compressed = await FlutterImageCompress.compressWithList(
+        rawBytes,
+        minWidth: targetWidth,
+        quality: quality,
+        format: CompressFormat.jpeg,
+      );
+      if (compressed.isNotEmpty && compressed.length < rawBytes.length) {
+        debugPrint(
+            'Nén ảnh thành công bằng flutter_image_compress: ${rawBytes.length} -> ${compressed.length} bytes');
+        return compressed;
+      }
+    } catch (e) {
+      debugPrint('flutter_image_compress fallback to instantiateImageCodec: $e');
+    }
+
+    // Tầng 2: Nén bằng ui.instantiateImageCodec (hoạt động 100% trên mọi nền tảng bao gồm Desktop & Web)
     try {
       final codec = await ui.instantiateImageCodec(
         rawBytes,
@@ -22,9 +43,77 @@ class ImageCropCompressHelper {
         return byteData.buffer.asUint8List();
       }
     } catch (e) {
-      debugPrint('Lỗi nén ảnh: $e');
+      debugPrint('Lỗi nén ảnh qua ui codec: $e');
     }
     return rawBytes;
+  }
+
+  /// Cắt và căn chỉnh ảnh: Hỗ trợ cả image_cropper (native Android/iOS)
+  /// và Custom Interactive Crop Dialog (hỗ trợ Desktop/Web và linh hoạt trong ứng dụng)
+  static Future<Uint8List?> cropImage({
+    required BuildContext context,
+    required String? sourcePath,
+    required Uint8List imageBytes,
+    double aspectRatio = 3 / 4,
+  }) async {
+    // 1. Thử dùng image_cropper trên Android hoặc iOS nếu có đường dẫn file gốc
+    if (sourcePath != null &&
+        !kIsWeb &&
+        (defaultTargetPlatform == TargetPlatform.android ||
+            defaultTargetPlatform == TargetPlatform.iOS)) {
+      try {
+        final croppedFile = await ImageCropper().cropImage(
+          sourcePath: sourcePath,
+          compressFormat: ImageCompressFormat.jpg,
+          compressQuality: 85,
+          maxHeight: 1440,
+          maxWidth: 1080,
+          uiSettings: [
+            AndroidUiSettings(
+              toolbarTitle: 'Cắt ảnh hồ sơ DatingLy',
+              toolbarColor: AppColors.primary,
+              toolbarWidgetColor: Colors.white,
+              activeControlsWidgetColor: AppColors.primary,
+              initAspectRatio: CropAspectRatioPreset.ratio4x3,
+              lockAspectRatio: false,
+              aspectRatioPresets: [
+                CropAspectRatioPreset.ratio4x3,
+                CropAspectRatioPreset.square,
+                CropAspectRatioPreset.original,
+              ],
+            ),
+            IOSUiSettings(
+              title: 'Cắt ảnh hồ sơ DatingLy',
+              aspectRatioLockEnabled: false,
+              aspectRatioPresets: [
+                CropAspectRatioPreset.ratio4x3,
+                CropAspectRatioPreset.square,
+                CropAspectRatioPreset.original,
+              ],
+            ),
+          ],
+        );
+
+        if (croppedFile != null) {
+          final bytes = await croppedFile.readAsBytes();
+          // Tiếp tục nén ảnh bằng bộ nén cao cấp
+          return await compressImageBytes(bytes);
+        } else {
+          // Người dùng chủ động bấm Hủy trong image_cropper
+          return null;
+        }
+      } catch (e) {
+        debugPrint('image_cropper fallback sang in-app dialog: $e');
+      }
+    }
+
+    // 2. Fallback sang Hộp thoại Cắt ảnh trực quan tích hợp sẵn (tương thích mọi môi trường)
+    if (!context.mounted) return null;
+    return showCropDialog(
+      context,
+      imageBytes: imageBytes,
+      aspectRatio: aspectRatio,
+    );
   }
 
   /// Mở màn hình / hộp thoại Interactive Crop cho người dùng căn chỉnh ảnh

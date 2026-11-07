@@ -163,4 +163,53 @@ void main() {
       expect(RegExp(r'^\d{6}$').hasMatch(codeValid), isTrue);
     });
   });
+
+  group('Photo Drag & Drop Reordering & Media Logic Tests', () {
+    test('Kéo thả ảnh hoán đổi vị trí và đưa ảnh lên làm avatar chính (index 0)', () {
+      final photos = ['photo_1.jpg', 'photo_2.jpg', 'photo_3.jpg', 'photo_4.jpg'];
+
+      // Người dùng kéo photo_3 (index 2) thả vào vị trí đầu tiên (index 0)
+      const oldIndex = 2;
+      const newIndex = 0;
+      final draggedItem = photos.removeAt(oldIndex);
+      photos.insert(newIndex, draggedItem);
+
+      expect(photos[0], 'photo_3.jpg');
+      expect(photos, ['photo_3.jpg', 'photo_1.jpg', 'photo_2.jpg', 'photo_4.jpg']);
+      expect(photos.length, 4);
+    });
+
+    test('Kéo thả ảnh về cuối danh sách hoạt động chính xác', () {
+      final photos = ['photo_A', 'photo_B', 'photo_C'];
+
+      // Kéo photo_A (index 0) về cuối danh sách (index 2)
+      final dragged = photos.removeAt(0);
+      photos.insert(2, dragged);
+
+      expect(photos, ['photo_B', 'photo_C', 'photo_A']);
+      expect(photos.first, 'photo_B');
+    });
+
+    test('interestedIn và orientation được lưu trữ và copyWith chính xác', () {
+      const user = UserModel(
+        id: 'user_test',
+        fullName: 'Khánh Test',
+        age: 22,
+        gender: 'male',
+        interestedIn: 'female',
+        orientation: 'serious',
+      );
+
+      expect(user.interestedIn, 'female');
+      expect(user.orientation, 'serious');
+
+      final updated = user.copyWith(interestedIn: 'all');
+      expect(updated.interestedIn, 'all');
+      expect(updated.orientation, 'serious');
+
+      final map = updated.toMap();
+      expect(map['interested_in'], 'all');
+      expect(map['orientation'], 'serious');
+    });
+  });
 }

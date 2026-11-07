@@ -127,18 +127,22 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 
       if (!mounted) return;
 
-      final croppedBytes = await ImageCropCompressHelper.showCropDialog(
-        context,
+      final croppedBytes = await ImageCropCompressHelper.cropImage(
+        context: context,
+        sourcePath: picked.path,
         imageBytes: rawBytes,
         aspectRatio: 3 / 4,
       );
 
       if (croppedBytes != null && mounted) {
+        // Tối ưu nén ảnh trước khi lưu trữ
+        final compressed =
+            await ImageCropCompressHelper.compressImageBytes(croppedBytes);
         setState(() {
-          _profilePhotoBytes.add(croppedBytes);
+          _profilePhotoBytes.add(compressed);
         });
         _showToast(
-          'Đã thêm và nén ảnh thành công (${_profilePhotoBytes.length}/6)',
+          'Đã thêm, cắt và nén ảnh thành công (${_profilePhotoBytes.length}/6)',
           isSuccess: true,
         );
       }
@@ -149,15 +153,19 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 
   Future<void> _recropPhoto(int index) async {
     final original = _profilePhotoBytes[index];
-    final recropped = await ImageCropCompressHelper.showCropDialog(
-      context,
+    final recropped = await ImageCropCompressHelper.cropImage(
+      context: context,
+      sourcePath: null,
       imageBytes: original,
       aspectRatio: 3 / 4,
     );
     if (recropped != null && mounted) {
+      final compressed =
+          await ImageCropCompressHelper.compressImageBytes(recropped);
       setState(() {
-        _profilePhotoBytes[index] = recropped;
+        _profilePhotoBytes[index] = compressed;
       });
+      _showToast('Đã cắt lại ảnh #${index + 1}', isSuccess: true);
     }
   }
 
@@ -173,6 +181,22 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       final item = _profilePhotoBytes.removeAt(oldIndex);
       _profilePhotoBytes.insert(newIndex, item);
     });
+  }
+
+  void _reorderPhoto(int oldIndex, int newIndex) {
+    if (oldIndex == newIndex) return;
+    if (oldIndex < 0 || oldIndex >= _profilePhotoBytes.length) return;
+    if (newIndex < 0 || newIndex >= _profilePhotoBytes.length) return;
+    setState(() {
+      final item = _profilePhotoBytes.removeAt(oldIndex);
+      _profilePhotoBytes.insert(newIndex, item);
+    });
+    _showToast(
+      newIndex == 0
+          ? 'Đã đặt làm ảnh đại diện chính ⭐️'
+          : 'Đã kéo thả đổi vị trí ảnh',
+      isSuccess: true,
+    );
   }
 
   void _addCustomTag() {
@@ -1036,10 +1060,38 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           ),
           const SizedBox(height: 6),
           Text(
-            'Tải lên ít nhất 1 ảnh. Ảnh đầu tiên sẽ là ảnh đại diện chính. Bạn có thể cắt và sắp xếp thứ tự ảnh.',
+            'Tải lên ít nhất 1 ảnh. Ảnh đầu tiên sẽ là ảnh đại diện chính. Bạn có thể nhấn giữ và kéo thả ảnh để đổi thứ tự.',
             style: TextStyle(color: Colors.grey[600], fontSize: 13),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 10),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: AppColors.primary.withValues(alpha: 0.25),
+              ),
+            ),
+            child: const Row(
+              children: [
+                Icon(Icons.touch_app_rounded,
+                    size: 18, color: AppColors.primary),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Kéo thả: Nhấn giữ ảnh rồi kéo sang ô khác để hoán đổi vị trí ảnh.',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
           GridView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
@@ -1057,146 +1109,134 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                 final bytes = _profilePhotoBytes[index];
                 final isAvatar = index == 0;
 
-                return Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(14),
-                      child: Image.memory(
-                        bytes,
-                        fit: BoxFit.cover,
-                      ),
-                    ),
-                    Container(
-                      decoration: BoxDecoration(
+                return DragTarget<int>(
+                  onWillAcceptWithDetails: (details) => details.data != index,
+                  onAcceptWithDetails: (details) {
+                    _reorderPhoto(details.data, index);
+                  },
+                  builder: (context, candidateData, rejectedData) {
+                    final isHovered = candidateData.isNotEmpty;
+                    return LongPressDraggable<int>(
+                      data: index,
+                      delay: const Duration(milliseconds: 150),
+                      feedback: Material(
+                        elevation: 10,
                         borderRadius: BorderRadius.circular(14),
-                        border: Border.all(
-                          color: isAvatar
-                              ? AppColors.primary
-                              : Colors.white.withValues(alpha: 0.5),
-                          width: isAvatar ? 2.5 : 1,
-                        ),
-                      ),
-                    ),
-                    Positioned(
-                      top: 6,
-                      left: 6,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: isAvatar
-                              ? AppColors.primary
-                              : Colors.black.withValues(alpha: 0.65),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          isAvatar ? '⭐️ Chính' : '#${index + 1}',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ),
-                    Positioned(
-                      bottom: 0,
-                      left: 0,
-                      right: 0,
-                      child: Container(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              Colors.transparent,
-                              Colors.black.withValues(alpha: 0.8),
-                            ],
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                          ),
-                          borderRadius: const BorderRadius.only(
-                            bottomLeft: Radius.circular(14),
-                            bottomRight: Radius.circular(14),
-                          ),
-                        ),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 2, vertical: 4),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                          children: [
-                            GestureDetector(
-                              onTap: () => _recropPhoto(index),
-                              child: const Icon(Icons.crop,
-                                  color: Colors.white, size: 16),
+                        child: Container(
+                          width: 105,
+                          height: 140,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                                color: AppColors.primary, width: 2.5),
+                            image: DecorationImage(
+                              image: MemoryImage(bytes),
+                              fit: BoxFit.cover,
                             ),
-                            if (index > 0)
-                              GestureDetector(
-                                onTap: () => _movePhoto(index, index - 1),
-                                child: const Icon(Icons.arrow_back,
-                                    color: Colors.white, size: 16),
-                              ),
-                            if (index < _profilePhotoBytes.length - 1)
-                              GestureDetector(
-                                onTap: () => _movePhoto(index, index + 1),
-                                child: const Icon(Icons.arrow_forward,
-                                    color: Colors.white, size: 16),
-                              ),
-                            GestureDetector(
-                              onTap: () => _removePhoto(index),
-                              child: const Icon(Icons.delete_outline,
-                                  color: Colors.redAccent, size: 16),
-                            ),
-                          ],
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                      childWhenDragging: Opacity(
+                        opacity: 0.3,
+                        child: _buildPhotoCell(bytes, index, isAvatar),
+                      ),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 180),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(14),
+                          border: isHovered
+                              ? Border.all(color: AppColors.primary, width: 3)
+                              : null,
+                        ),
+                        child: _buildPhotoCell(bytes, index, isAvatar),
+                      ),
+                    );
+                  },
                 );
               }
 
-              return GestureDetector(
-                onTap: _pickAndProcessPhoto,
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(
-                      color: Colors.grey[300]!,
-                      style: BorderStyle.solid,
-                      width: 1.5,
+              return DragTarget<int>(
+                onWillAcceptWithDetails: (details) =>
+                    _profilePhotoBytes.isNotEmpty,
+                onAcceptWithDetails: (details) {
+                  _reorderPhoto(details.data, _profilePhotoBytes.length - 1);
+                },
+                builder: (context, candidateData, rejectedData) {
+                  final isHovered = candidateData.isNotEmpty;
+                  return GestureDetector(
+                    onTap: _pickAndProcessPhoto,
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 180),
+                      decoration: BoxDecoration(
+                        color: isHovered
+                            ? AppColors.primary.withValues(alpha: 0.08)
+                            : Colors.white,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color:
+                              isHovered ? AppColors.primary : Colors.grey[300]!,
+                          style: BorderStyle.solid,
+                          width: isHovered ? 2 : 1.5,
+                        ),
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withValues(alpha: 0.1),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.add_a_photo_rounded,
+                              color: AppColors.primary,
+                              size: 20,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            'Thêm ảnh',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: Colors.grey[600],
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withValues(alpha: 0.1),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.add_a_photo_rounded,
-                          color: AppColors.primary,
-                          size: 20,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        'Thêm ảnh',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: Colors.grey[600],
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+                  );
+                },
               );
             },
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 18),
+
+          // Nút Xem trước thẻ hồ sơ trực tiếp
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.primary,
+                side: const BorderSide(color: AppColors.primary, width: 1.5),
+                padding: const EdgeInsets.symmetric(vertical: 13),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+              onPressed: _profilePhotoBytes.isEmpty
+                  ? null
+                  : _showLiveProfilePreviewSheet,
+              icon: const Icon(Icons.remove_red_eye_rounded, size: 20),
+              label: const Text(
+                'Xem trước thẻ hồ sơ trực tiếp 👁️',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+              ),
+            ),
+          ),
+          const SizedBox(height: 18),
+
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -1226,7 +1266,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'Chọn ảnh rõ mặt, nụ cười tươi và thể hiện sở thích của bạn (du lịch, cún mèo, thể thao). Ảnh được nén tự động để tải nhanh và tiết kiệm dung lượng.',
+                        'Chọn ảnh rõ mặt, nụ cười tươi và thể hiện sở thích của bạn. Ảnh được nén tự động để tải nhanh và tiết kiệm dung lượng.',
                         style: TextStyle(
                           fontSize: 12,
                           color: Colors.grey[700],
@@ -1241,6 +1281,448 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildPhotoCell(Uint8List bytes, int index, bool isAvatar) {
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(14),
+          child: Image.memory(
+            bytes,
+            fit: BoxFit.cover,
+          ),
+        ),
+        Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: isAvatar
+                  ? AppColors.primary
+                  : Colors.white.withValues(alpha: 0.5),
+              width: isAvatar ? 2.5 : 1,
+            ),
+          ),
+        ),
+        Positioned(
+          top: 6,
+          left: 6,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: BoxDecoration(
+              color: isAvatar
+                  ? AppColors.primary
+                  : Colors.black.withValues(alpha: 0.65),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              isAvatar ? '⭐️ Chính' : '#${index + 1}',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ),
+        Positioned(
+          bottom: 0,
+          left: 0,
+          right: 0,
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Colors.transparent,
+                  Colors.black.withValues(alpha: 0.8),
+                ],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+              ),
+              borderRadius: const BorderRadius.only(
+                bottomLeft: Radius.circular(14),
+                bottomRight: Radius.circular(14),
+              ),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 4),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                GestureDetector(
+                  onTap: () => _recropPhoto(index),
+                  child:
+                      const Icon(Icons.crop, color: Colors.white, size: 16),
+                ),
+                if (index > 0)
+                  GestureDetector(
+                    onTap: () => _movePhoto(index, index - 1),
+                    child: const Icon(Icons.arrow_back,
+                        color: Colors.white, size: 16),
+                  ),
+                if (index < _profilePhotoBytes.length - 1)
+                  GestureDetector(
+                    onTap: () => _movePhoto(index, index + 1),
+                    child: const Icon(Icons.arrow_forward,
+                        color: Colors.white, size: 16),
+                  ),
+                GestureDetector(
+                  onTap: () => _removePhoto(index),
+                  child: const Icon(Icons.delete_outline,
+                      color: Colors.redAccent, size: 16),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _showLiveProfilePreviewSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        int previewIndex = 0;
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            final activeBytes = _profilePhotoBytes.isNotEmpty
+                ? _profilePhotoBytes[previewIndex]
+                : null;
+            final genderLabel = _gender == 'male'
+                ? 'Nam 👨'
+                : (_gender == 'female' ? 'Nữ 👩' : 'Khác 🌈');
+            final interestedLabel = _interestedIn == 'female'
+                ? 'Nữ 👩'
+                : (_interestedIn == 'male' ? 'Nam 👨' : 'Tất cả 👥');
+
+            return Container(
+              height: MediaQuery.of(context).size.height * 0.88,
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              child: Column(
+                children: [
+                  // Handle & Header
+                  Container(
+                    margin: const EdgeInsets.only(top: 10, bottom: 6),
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[300],
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 8),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Row(
+                          children: [
+                            Icon(Icons.remove_red_eye_rounded,
+                                color: AppColors.primary, size: 20),
+                            SizedBox(width: 8),
+                            Text(
+                              'Xem trước thẻ hồ sơ Dating',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close),
+                          onPressed: () => Navigator.pop(ctx),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Divider(height: 1),
+
+                  // Dating Card
+                  Expanded(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            height: 440,
+                            width: double.infinity,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(20),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.15),
+                                  blurRadius: 16,
+                                  offset: const Offset(0, 8),
+                                ),
+                              ],
+                            ),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(20),
+                              child: Stack(
+                                fit: StackFit.expand,
+                                children: [
+                                  if (activeBytes != null)
+                                    Image.memory(
+                                      activeBytes,
+                                      fit: BoxFit.cover,
+                                    )
+                                  else
+                                    Container(
+                                      color: Colors.grey[200],
+                                      child: const Icon(Icons.person,
+                                          size: 80, color: Colors.grey),
+                                    ),
+
+                                  // Gradient Overlay
+                                  Container(
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                        begin: Alignment.topCenter,
+                                        end: Alignment.bottomCenter,
+                                        colors: [
+                                          Colors.transparent,
+                                          Colors.black.withValues(alpha: 0.85),
+                                        ],
+                                        stops: const [0.45, 1.0],
+                                      ),
+                                    ),
+                                  ),
+
+                                  // Top photo indicator dots
+                                  if (_profilePhotoBytes.length > 1)
+                                    Positioned(
+                                      top: 12,
+                                      left: 16,
+                                      right: 16,
+                                      child: Row(
+                                        children: List.generate(
+                                          _profilePhotoBytes.length,
+                                          (i) => Expanded(
+                                            child: Container(
+                                              margin:
+                                                  const EdgeInsets.symmetric(
+                                                      horizontal: 2),
+                                              height: 3.5,
+                                              decoration: BoxDecoration(
+                                                color: i == previewIndex
+                                                    ? Colors.white
+                                                    : Colors.white
+                                                        .withValues(alpha: 0.35),
+                                                borderRadius:
+                                                    BorderRadius.circular(2),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+
+                                  // Navigation taps for photos
+                                  if (_profilePhotoBytes.length > 1)
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: GestureDetector(
+                                            behavior:
+                                                HitTestBehavior.translucent,
+                                            onTap: () {
+                                              if (previewIndex > 0) {
+                                                setModalState(() =>
+                                                    previewIndex--);
+                                              }
+                                            },
+                                          ),
+                                        ),
+                                        Expanded(
+                                          child: GestureDetector(
+                                            behavior:
+                                                HitTestBehavior.translucent,
+                                            onTap: () {
+                                              if (previewIndex <
+                                                  _profilePhotoBytes.length -
+                                                      1) {
+                                                setModalState(() =>
+                                                    previewIndex++);
+                                              }
+                                            },
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+
+                                  // Profile Info bottom
+                                  Positioned(
+                                    bottom: 18,
+                                    left: 18,
+                                    right: 18,
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Row(
+                                          children: [
+                                            Text(
+                                              '${_nameController.text.trim().isEmpty ? "Bạn" : _nameController.text.trim()}, $_calculatedAge',
+                                              style: const TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 24,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                            const SizedBox(width: 8),
+                                            const Icon(
+                                              Icons.verified_rounded,
+                                              color: Colors.blueAccent,
+                                              size: 22,
+                                            ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 6),
+                                        Row(
+                                          children: [
+                                            Container(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                      horizontal: 8,
+                                                      vertical: 3),
+                                              decoration: BoxDecoration(
+                                                color: Colors.white
+                                                    .withValues(alpha: 0.25),
+                                                borderRadius:
+                                                    BorderRadius.circular(12),
+                                              ),
+                                              child: Text(
+                                                genderLabel,
+                                                style: const TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 12,
+                                                ),
+                                              ),
+                                            ),
+                                            const SizedBox(width: 8),
+                                            Container(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                      horizontal: 8,
+                                                      vertical: 3),
+                                              decoration: BoxDecoration(
+                                                color: AppColors.primary
+                                                    .withValues(alpha: 0.85),
+                                                borderRadius:
+                                                    BorderRadius.circular(12),
+                                              ),
+                                              child: Text(
+                                                'Tìm kiếm: $interestedLabel',
+                                                style: const TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 8),
+                                        const Text(
+                                          'Chào mừng bạn đến với hồ sơ của mình! Hãy kết nối nhé ✨',
+                                          style: TextStyle(
+                                            color: Colors.white70,
+                                            fontSize: 13,
+                                          ),
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+
+                          // Interests section
+                          if (_selectedTags.isNotEmpty) ...[
+                            const Text(
+                              'Sở thích & Đam mê 🔥',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: _selectedTags.map((tag) {
+                                return Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 12, vertical: 6),
+                                  decoration: BoxDecoration(
+                                    color:
+                                        AppColors.primary.withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(
+                                      color: AppColors.primary
+                                          .withValues(alpha: 0.3),
+                                    ),
+                                  ),
+                                  child: Text(
+                                    tag,
+                                    style: const TextStyle(
+                                      color: AppColors.primary,
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                );
+                              }).toList(),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  // Bottom action
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                        onPressed: () => Navigator.pop(ctx),
+                        child: const Text(
+                          'Đóng xem trước',
+                          style: TextStyle(
+                              fontSize: 15, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
     );
   }
 }

@@ -16,10 +16,12 @@ class CropImageDialogWidget extends StatelessWidget {
   static Future<Uint8List?> show(
     BuildContext context, {
     required Uint8List imageBytes,
+    String? sourcePath,
     double aspectRatio = 3 / 4,
   }) {
-    return ImageCropCompressHelper.showCropDialog(
-      context,
+    return ImageCropCompressHelper.cropImage(
+      context: context,
+      sourcePath: sourcePath,
       imageBytes: imageBytes,
       aspectRatio: aspectRatio,
     );
