@@ -30,8 +30,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   DateTime? _selectedBirthDate;
   int _calculatedAge = 18;
 
-  // ── Step 2: Giới tính & Định hướng ──
+  // ── Step 2: Giới tính, Đối tượng tìm kiếm & Định hướng ──
   String _gender = 'Nam';
+  String _interestedIn = 'Nữ';
   String _orientation = 'serious';
 
   // ── Step 3: Tags sở thích ──
@@ -282,6 +283,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         birthDate: _selectedBirthDate,
         age: _calculatedAge,
         gender: _gender,
+        interestedIn: _interestedIn,
         orientation: _orientation,
         bio: 'Chào mừng bạn đến với hồ sơ của mình! Hãy kết nối nhé ✨',
         tags: _selectedTags,
@@ -664,7 +666,11 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                       : '🌈';
               return Expanded(
                 child: GestureDetector(
-                  onTap: () => setState(() => _gender = g),
+                  onTap: () => setState(() {
+                    _gender = g;
+                    if (g == 'Nam') _interestedIn = 'Nữ';
+                    if (g == 'Nữ') _interestedIn = 'Nam';
+                  }),
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
                     margin: const EdgeInsets.symmetric(horizontal: 4),
@@ -695,6 +701,76 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                         const SizedBox(height: 6),
                         Text(
                           g,
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: isSelected
+                                ? FontWeight.bold
+                                : FontWeight.normal,
+                            color: isSelected
+                                ? AppColors.primary
+                                : Colors.black87,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: 28),
+          const Text(
+            'Bạn muốn gặp gỡ ai? 💘',
+            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'DatingLy sẽ gợi ý các đối tượng tương ứng trong mục Khám phá.',
+            style: TextStyle(color: Colors.grey[600], fontSize: 13),
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              {'id': 'Nữ', 'label': 'Nữ', 'emoji': '👩'},
+              {'id': 'Nam', 'label': 'Nam', 'emoji': '👨'},
+              {'id': 'all', 'label': 'Tất cả', 'emoji': '🌈'},
+            ].map((target) {
+              final id = target['id']!;
+              final isSelected = _interestedIn == id;
+              return Expanded(
+                child: GestureDetector(
+                  onTap: () => setState(() => _interestedIn = id),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    margin: const EdgeInsets.symmetric(horizontal: 4),
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    decoration: BoxDecoration(
+                      color: isSelected ? Colors.white : Colors.grey[100],
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: isSelected
+                            ? AppColors.primary
+                            : Colors.transparent,
+                        width: 2,
+                      ),
+                      boxShadow: isSelected
+                          ? [
+                              BoxShadow(
+                                color: AppColors.primary
+                                    .withValues(alpha: 0.15),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
+                              )
+                            ]
+                          : [],
+                    ),
+                    child: Column(
+                      children: [
+                        Text(target['emoji']!,
+                            style: const TextStyle(fontSize: 28)),
+                        const SizedBox(height: 6),
+                        Text(
+                          target['label']!,
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: isSelected

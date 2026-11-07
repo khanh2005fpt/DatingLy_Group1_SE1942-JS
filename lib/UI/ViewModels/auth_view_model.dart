@@ -351,6 +351,7 @@ class AuthViewModel extends Notifier<AuthState> {
     required DateTime? birthDate,
     required int age,
     required String gender,
+    String interestedIn = 'all',
     required String orientation,
     required String bio,
     required List<String> tags,
@@ -373,6 +374,7 @@ class AuthViewModel extends Notifier<AuthState> {
         birthDate: birthDate,
         age: age,
         gender: gender,
+        interestedIn: interestedIn,
         orientation: orientation,
         bio: bio.trim(),
         tags: tags,
@@ -385,6 +387,12 @@ class AuthViewModel extends Notifier<AuthState> {
       await _settingRepo.setOnboardingCompleted(true);
       await _settingRepo.setIsFirstTimeUser(false);
       await _settingRepo.cacheUserProfile(updated);
+
+      // Đồng bộ ngay bộ lọc Discovery theo xu hướng muốn tìm
+      final currentFilter = _settingRepo.loadDiscoveryFilter();
+      await _settingRepo.saveDiscoveryFilter(
+        currentFilter.copyWith(interestedIn: interestedIn),
+      );
 
       state = state.copyWith(
         isLoading: false,

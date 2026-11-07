@@ -71,6 +71,7 @@ void main() {
         birthDate: DateTime(2000, 5, 20),
         age: 26,
         gender: 'Nữ',
+        interestedIn: 'Nam',
         orientation: 'long_term',
         bio: 'Tìm bạn tâm sự và cùng đi ăn kem 🍦',
         tags: ['Cà phê', 'Yoga'],
@@ -89,6 +90,7 @@ void main() {
       expect(restored.fullName, 'Trần Thị B');
       expect(restored.age, 26);
       expect(restored.gender, 'Nữ');
+      expect(restored.interestedIn, 'Nam');
       expect(restored.orientation, 'long_term');
       expect(restored.tags, ['Cà phê', 'Yoga']);
       expect(restored.onboardingCompleted, isTrue);

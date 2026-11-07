@@ -28,6 +28,7 @@ class UserModel {
   final DateTime? birthDate;
   final int age;
   final String gender;
+  final String interestedIn; // 'Nam' | 'Nữ' | 'all' (Giới tính muốn tìm kiếm / hẹn hò)
   final String orientation; // Định hướng hẹn hò / mối quan hệ
   final String bio;
   final List<String> tags;
@@ -47,6 +48,7 @@ class UserModel {
     this.birthDate,
     this.age = 18,
     this.gender = 'other',
+    this.interestedIn = 'all',
     this.orientation = '',
     this.bio = '',
     this.tags = const [],
@@ -69,6 +71,7 @@ class UserModel {
     DateTime? birthDate,
     int? age,
     String? gender,
+    String? interestedIn,
     String? orientation,
     String? bio,
     List<String>? tags,
@@ -88,6 +91,7 @@ class UserModel {
       birthDate: birthDate ?? this.birthDate,
       age: age ?? this.age,
       gender: gender ?? this.gender,
+      interestedIn: interestedIn ?? this.interestedIn,
       orientation: orientation ?? this.orientation,
       bio: bio ?? this.bio,
       tags: tags ?? this.tags,
@@ -110,6 +114,7 @@ class UserModel {
       if (birthDate != null) 'birth_date': Timestamp.fromDate(birthDate!),
       'age': age,
       'gender': gender,
+      'interested_in': interestedIn,
       'orientation': orientation,
       'bio': bio,
       'tags': tags,
@@ -143,6 +148,9 @@ class UserModel {
       birthDate: parseDate(map['birth_date']),
       age: (map['age'] as num?)?.toInt() ?? 18,
       gender: map['gender'] as String? ?? 'other',
+      interestedIn: map['interested_in'] as String? ??
+          map['interestedIn'] as String? ??
+          'all',
       orientation: map['orientation'] as String? ?? '',
       bio: map['bio'] as String? ?? '',
       tags:
@@ -186,6 +194,7 @@ class UserModel {
       'birth_date': birthDate?.toIso8601String(),
       'age': age,
       'gender': gender,
+      'interested_in': interestedIn,
       'orientation': orientation,
       'bio': bio,
       'tags': tags,
@@ -226,6 +235,9 @@ class UserModel {
           : null,
       age: (json['age'] as num?)?.toInt() ?? 18,
       gender: json['gender'] as String? ?? 'other',
+      interestedIn: json['interested_in']?.toString() ??
+          json['interestedIn']?.toString() ??
+          'all',
       orientation: json['orientation'] as String? ?? '',
       bio: json['bio'] as String? ?? '',
       tags: (json['tags'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
