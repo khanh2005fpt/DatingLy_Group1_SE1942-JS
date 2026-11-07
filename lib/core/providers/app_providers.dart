@@ -4,6 +4,8 @@ import '../../data/services/firestore_service.dart';
 import '../../data/services/firebase_storage_service.dart';
 import '../../data/services/preferences_service.dart';
 import '../../data/services/notification_service.dart';
+import '../../data/repositories/activity_repository.dart';
+import '../../data/local/database_helper.dart';
 
 // Provider cho SharedPreferences (sẽ override trong main.dart sau khi init)
 final preferencesServiceProvider = Provider<PreferencesService>((ref) {
@@ -36,4 +38,13 @@ final notificationServiceProvider = Provider<NotificationService>((ref) {
 final authStateChangesProvider = StreamProvider((ref) {
   final authService = ref.watch(firebaseAuthServiceProvider);
   return authService.authStateChanges;
+});
+
+// Provider cho Activity Repository (Module 4)
+final activityRepositoryProvider = Provider<ActivityRepository>((ref) {
+  return ActivityRepository(
+    dbHelper: DatabaseHelper.instance,
+    firestoreService: ref.watch(firestoreServiceProvider),
+    notificationService: ref.watch(notificationServiceProvider),
+  );
 });

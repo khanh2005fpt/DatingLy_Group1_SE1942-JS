@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../../data/local/database_helper.dart';
 import '../../../../data/models/notification_item_model.dart';
 import '../../../../core/providers/app_providers.dart';
+import '../../../../data/repositories/activity_repository.dart';
 
 class NotificationState {
   final List<NotificationItemModel> notifications;
@@ -32,7 +32,7 @@ class NotificationState {
 }
 
 class NotificationViewModel extends Notifier<NotificationState> {
-  final DatabaseHelper _dbHelper = DatabaseHelper.instance;
+  ActivityRepository get _repository => ref.read(activityRepositoryProvider);
 
   @override
   NotificationState build() {
@@ -44,8 +44,8 @@ class NotificationViewModel extends Notifier<NotificationState> {
   Future<void> loadNotifications() async {
     state = state.copyWith(isLoading: true);
     final filter = state.currentFilter == 'all' ? null : state.currentFilter;
-    final items = await _dbHelper.getAllNotifications(typeFilter: filter);
-    final unread = await _dbHelper.getUnreadNotificationCount();
+    final items = await _repository.getAllNotifications(typeFilter: filter);
+    final unread = await _repository.getUnreadNotificationCount();
 
     state = state.copyWith(
       notifications: items,
@@ -58,8 +58,8 @@ class NotificationViewModel extends Notifier<NotificationState> {
     if (state.currentFilter == filter) return;
     state = state.copyWith(currentFilter: filter, isLoading: true);
     final typeFilter = filter == 'all' ? null : filter;
-    final items = await _dbHelper.getAllNotifications(typeFilter: typeFilter);
-    final unread = await _dbHelper.getUnreadNotificationCount();
+    final items = await _repository.getAllNotifications(typeFilter: typeFilter);
+    final unread = await _repository.getUnreadNotificationCount();
 
     state = state.copyWith(
       notifications: items,
@@ -69,22 +69,22 @@ class NotificationViewModel extends Notifier<NotificationState> {
   }
 
   Future<void> markAsRead(int id) async {
-    await _dbHelper.markNotificationAsRead(id);
+    await _repository.markNotificationAsRead(id);
     await loadNotifications();
   }
 
   Future<void> markAllAsRead() async {
-    await _dbHelper.markAllNotificationsAsRead();
+    await _repository.markAllNotificationsAsRead();
     await loadNotifications();
   }
 
   Future<void> deleteNotification(int id) async {
-    await _dbHelper.deleteNotification(id);
+    await _repository.deleteNotification(id);
     await loadNotifications();
   }
 
   Future<void> clearAll() async {
-    await _dbHelper.clearAllNotifications();
+    await _repository.clearAllNotifications();
     await loadNotifications();
   }
 
@@ -103,12 +103,11 @@ class NotificationViewModel extends Notifier<NotificationState> {
       route: route,
       createdAt: DateTime.now(),
     );
-    await _dbHelper.insertNotification(notification);
+    await _repository.insertNotification(notification);
 
     // Bắn local notification nếu cài đặt đang bật
     try {
-      final notifService = ref.read(notificationServiceProvider);
-      await notifService.showNotification(
+      await _repository.showLocalNotification(
         title: title,
         body: body,
         payload: route,

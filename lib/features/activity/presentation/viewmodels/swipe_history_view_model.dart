@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/providers/app_providers.dart';
-import '../../../../data/local/database_helper.dart';
 import '../../../../data/models/swipe_history_model.dart';
+import '../../../../data/repositories/activity_repository.dart';
 
 class SwipeHistoryState {
   final List<SwipeHistoryModel> history;
@@ -40,7 +40,7 @@ class SwipeHistoryState {
 }
 
 class SwipeHistoryViewModel extends Notifier<SwipeHistoryState> {
-  final DatabaseHelper _dbHelper = DatabaseHelper.instance;
+  ActivityRepository get _repository => ref.read(activityRepositoryProvider);
 
   @override
   SwipeHistoryState build() {
@@ -53,8 +53,8 @@ class SwipeHistoryViewModel extends Notifier<SwipeHistoryState> {
     try {
       final filter =
           state.currentFilter == 'all' ? null : state.currentFilter;
-      final list = await _dbHelper.getRecentSwipeHistory(actionFilter: filter);
-      final last = await _dbHelper.getLastSwipe();
+      final list = await _repository.getRecentSwipeHistory(actionFilter: filter);
+      final last = await _repository.getLastSwipe();
 
       state = state.copyWith(
         history: list,
@@ -74,8 +74,8 @@ class SwipeHistoryViewModel extends Notifier<SwipeHistoryState> {
     state = state.copyWith(currentFilter: filter, isLoading: true);
     final actionFilter = filter == 'all' ? null : filter;
     final list =
-        await _dbHelper.getRecentSwipeHistory(actionFilter: actionFilter);
-    final last = await _dbHelper.getLastSwipe();
+        await _repository.getRecentSwipeHistory(actionFilter: actionFilter);
+    final last = await _repository.getLastSwipe();
 
     state = state.copyWith(
       history: list,
@@ -86,7 +86,7 @@ class SwipeHistoryViewModel extends Notifier<SwipeHistoryState> {
 
   /// Ghi nhận 1 thao tác quẹt vào SQLite
   Future<void> recordSwipe(SwipeHistoryModel swipe) async {
-    await _dbHelper.insertSwipeHistory(swipe);
+    await _repository.insertSwipeHistory(swipe);
     await loadHistory();
   }
 
@@ -95,22 +95,22 @@ class SwipeHistoryViewModel extends Notifier<SwipeHistoryState> {
     final myId = ref.read(firebaseAuthServiceProvider).currentUser?.uid;
     if (myId == null) return null;
 
-    final last = await _dbHelper.getLastSwipe();
+    final last = await _repository.getLastSwipe();
     if (last == null) return null;
 
     state = state.copyWith(isRewinding: true);
     try {
       // 1. Xóa swipe khỏi Firestore để profile có thể xuất hiện lại
-      await ref.read(firestoreServiceProvider).undoSwipe(
-            myId: myId,
-            targetUserId: last.targetUserId,
-          );
+      await _repository.undoSwipe(
+        myId: myId,
+        targetUserId: last.targetUserId,
+      );
 
       // 2. Xóa khỏi SQLite cache
       if (last.id != null) {
-        await _dbHelper.deleteSwipe(last.id!);
+        await _repository.deleteSwipe(last.id!);
       } else {
-        await _dbHelper.deleteSwipeByTargetUserId(last.targetUserId);
+        await _repository.deleteSwipeByTargetUserId(last.targetUserId);
       }
 
       await loadHistory();
@@ -131,15 +131,15 @@ class SwipeHistoryViewModel extends Notifier<SwipeHistoryState> {
     if (myId == null) return false;
 
     try {
-      await ref.read(firestoreServiceProvider).undoSwipe(
-            myId: myId,
-            targetUserId: item.targetUserId,
-          );
+      await _repository.undoSwipe(
+        myId: myId,
+        targetUserId: item.targetUserId,
+      );
 
       if (item.id != null) {
-        await _dbHelper.deleteSwipe(item.id!);
+        await _repository.deleteSwipe(item.id!);
       } else {
-        await _dbHelper.deleteSwipeByTargetUserId(item.targetUserId);
+        await _repository.deleteSwipeByTargetUserId(item.targetUserId);
       }
 
       await loadHistory();
@@ -151,7 +151,7 @@ class SwipeHistoryViewModel extends Notifier<SwipeHistoryState> {
   }
 
   Future<void> clearHistory() async {
-    await _dbHelper.clearAllSwipeHistory();
+    await _repository.clearAllSwipeHistory();
     await loadHistory();
   }
 }

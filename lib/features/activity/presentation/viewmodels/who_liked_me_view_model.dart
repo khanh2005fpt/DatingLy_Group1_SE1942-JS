@@ -1,9 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/providers/app_providers.dart';
-import '../../../../data/local/database_helper.dart';
 import '../../../../data/models/swipe_history_model.dart';
 import '../../../../data/models/user_model.dart';
 import '../../../../data/models/who_liked_user_item.dart';
+import '../../../../data/repositories/activity_repository.dart';
 
 class WhoLikedMeState {
   final List<WhoLikedUserItem> items;
@@ -34,26 +34,23 @@ class WhoLikedMeState {
 }
 
 class WhoLikedMeViewModel extends Notifier<WhoLikedMeState> {
-  final DatabaseHelper _dbHelper = DatabaseHelper.instance;
+  ActivityRepository get _repository => ref.read(activityRepositoryProvider);
 
   @override
   WhoLikedMeState build() {
     final myId = ref.watch(authStateChangesProvider).value?.uid;
     if (myId != null) {
-      final sub = ref
-          .read(firestoreServiceProvider)
-          .streamWhoLikedMe(myId)
-          .listen(
-            (items) {
-              state = state.copyWith(items: items, isLoading: false);
-            },
-            onError: (err) {
-              state = state.copyWith(
-                isLoading: false,
-                errorMessage: 'Lỗi tải người đã thích bạn: $err',
-              );
-            },
+      final sub = _repository.streamWhoLikedMe(myId).listen(
+        (items) {
+          state = state.copyWith(items: items, isLoading: false);
+        },
+        onError: (err) {
+          state = state.copyWith(
+            isLoading: false,
+            errorMessage: 'Lỗi tải người đã thích bạn: $err',
           );
+        },
+      );
       ref.onDispose(sub.cancel);
     }
     Future.microtask(loadWhoLikedMe);
@@ -69,8 +66,7 @@ class WhoLikedMeViewModel extends Notifier<WhoLikedMeState> {
 
     state = state.copyWith(isLoading: true, errorMessage: null);
     try {
-      final list = await ref
-          .read(firestoreServiceProvider)
+      final list = await _repository
           .getWhoLikedMe(myId)
           .timeout(const Duration(seconds: 15));
 
@@ -94,15 +90,15 @@ class WhoLikedMeViewModel extends Notifier<WhoLikedMeState> {
 
     try {
       // 1. Ghi nhận vào Firestore
-      final matchId = await ref.read(firestoreServiceProvider).recordSwipe(
-            myId: myId,
-            targetUserId: targetUser.id,
-            isLike: true,
-            isSuperLike: isSuperLike,
-          );
+      final matchId = await _repository.recordSwipe(
+        myId: myId,
+        targetUserId: targetUser.id,
+        isLike: true,
+        isSuperLike: isSuperLike,
+      );
 
       // 2. Ghi nhận vào SQLite cache
-      await _dbHelper.insertSwipeHistory(
+      await _repository.insertSwipeHistory(
         SwipeHistoryModel(
           targetUserId: targetUser.id,
           targetUserName: targetUser.fullName,
@@ -136,14 +132,14 @@ class WhoLikedMeViewModel extends Notifier<WhoLikedMeState> {
 
     try {
       // 1. Ghi nhận vào Firestore
-      await ref.read(firestoreServiceProvider).recordSwipe(
-            myId: myId,
-            targetUserId: targetUser.id,
-            isLike: false,
-          );
+      await _repository.recordSwipe(
+        myId: myId,
+        targetUserId: targetUser.id,
+        isLike: false,
+      );
 
       // 2. Ghi nhận vào SQLite cache
-      await _dbHelper.insertSwipeHistory(
+      await _repository.insertSwipeHistory(
         SwipeHistoryModel(
           targetUserId: targetUser.id,
           targetUserName: targetUser.fullName,
