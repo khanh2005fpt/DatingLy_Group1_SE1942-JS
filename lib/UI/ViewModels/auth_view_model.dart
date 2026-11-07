@@ -166,9 +166,8 @@ class AuthViewModel extends Notifier<AuthState> {
             verificationId: verificationId,
             resendToken: resendToken,
             isOtpSent: true,
-            resendCountdown: 60,
           );
-          _startResendTimer();
+          startResendTimer(60);
           if (!completer.isCompleted) completer.complete(true);
         },
         codeAutoRetrievalTimeout: (String verificationId) {
@@ -186,8 +185,10 @@ class AuthViewModel extends Notifier<AuthState> {
     return completer.future;
   }
 
-  void _startResendTimer() {
+  /// Bắt đầu bộ đếm ngược gửi lại mã OTP (mặc định 60 giây)
+  void startResendTimer([int seconds = 60]) {
     _countdownTimer?.cancel();
+    state = state.copyWith(resendCountdown: seconds);
     _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (state.resendCountdown <= 1) {
         timer.cancel();
@@ -196,6 +197,12 @@ class AuthViewModel extends Notifier<AuthState> {
         state = state.copyWith(resendCountdown: state.resendCountdown - 1);
       }
     });
+  }
+
+  /// Hủy và reset bộ đếm thời gian gửi lại OTP
+  void cancelResendTimer() {
+    _countdownTimer?.cancel();
+    state = state.copyWith(resendCountdown: 0);
   }
 
   Future<bool> resendOtp() async {

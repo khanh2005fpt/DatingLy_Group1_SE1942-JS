@@ -446,12 +446,27 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
             const SizedBox(height: 18),
             Center(
               child: authState.resendCountdown > 0
-                  ? Text(
-                      'Gửi lại mã sau (${authState.resendCountdown}s)',
-                      style: TextStyle(
-                        color: Colors.grey[500],
-                        fontWeight: FontWeight.w500,
-                        fontSize: 13,
+                  ? Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.timer_outlined, size: 16, color: AppColors.primary),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Gửi lại mã OTP sau (${authState.resendCountdown}s)',
+                            style: const TextStyle(
+                              color: AppColors.primary,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ],
                       ),
                     )
                   : TextButton.icon(
