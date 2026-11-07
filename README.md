@@ -55,6 +55,38 @@ Module cốt lõi phụ trách luồng đăng nhập, khởi tạo hồ sơ và 
 
 ---
 
+## 📌 Module 5: An toàn, Cài đặt & Tiện ích (Sơn)
+
+Module chịu trách nhiệm bảo mật tài khoản, quyền riêng tư, an toàn cộng đồng và quản lý media:
+
+### 1. Cài đặt Tài khoản & Xác thực lại (Re-authentication)
+- **Đổi Email & Đổi Mật khẩu**: Bắt buộc người dùng nhập mật khẩu hiện tại để thực hiện Re-authenticate với Firebase Auth trước khi tiến hành cập nhật, chống chiếm quyền tài khoản.
+- **Tùy chỉnh giao diện & Thông báo**:
+  - Giao diện Sáng/Tối (Light/Dark Theme) lưu trữ qua key `dark_mode_theme` (tương thích `cfg_dark_mode`).
+  - Bật/Tắt thông báo đẩy lưu trữ qua key `notification_enabled` (tương thích `cfg_notifications_enabled`).
+- **Chế độ ẩn danh (Ghost Mode)**: Cho phép người dùng bật `ghost_mode` để ẩn profile khỏi hàng đợi quẹt thẻ của người khác, đồng bộ cả SharedPreferences và trường `ghost_mode` trên Firestore.
+
+### 2. Trung tâm An toàn (Safety Center) & Báo cáo Vi phạm
+- **Báo cáo người dùng (Report User)**:
+  - Chọn lý do vi phạm theo danh mục chuẩn (`ReportReason`: Spam, Giả mạo, Quấy rối, Vị thành niên, Nội dung phản cảm...).
+  - Đính kèm ảnh chụp màn hình bằng chứng (tải lên Firebase Storage).
+  - Lưu trữ tài liệu báo cáo vào collection `reports` trên Cloud Firestore với trạng thái `pending`.
+- **Chặn & Bỏ chặn người dùng (Block/Unblock)**:
+  - Quản lý danh sách ID người dùng bị chặn trong mảng `blocked_users` trên Firestore.
+  - Xem danh sách chi tiết các tài khoản đang bị chặn và hỗ trợ Bỏ chặn 1-chạm.
+  - Tích hợp nút nạp tài khoản giả lập để demo tính năng khi danh sách trống.
+
+### 3. Thư viện Đa phương tiện & Tiện ích Tải ảnh (Media Gallery)
+- **Bộ sưu tập ảnh chat**: Tự động lọc toàn bộ tin nhắn dạng ảnh (`message_type == 'image'`) trong cuộc trò chuyện (truy vấn từ subcollection `matches/{id}/messages` hoặc `messages`).
+- **Trình xem ảnh toàn màn hình**: Hỗ trợ phóng to, thu nhỏ và di chuyển ảnh mượt mà với `InteractiveViewer`.
+- **Tải ảnh về máy (Download)**: Lưu ảnh trực tiếp về thư viện ảnh thiết bị (hỗ trợ nền tảng Web, Android và iOS).
+
+### 4. Đăng xuất an toàn & Dọn dẹp bộ nhớ đệm
+- **Xóa sạch dữ liệu cục bộ**: Xóa toàn bộ cấu hình SharedPreferences khi đăng xuất.
+- **Dọn dẹp SQLite Cache**: Tự động quét và xóa sạch các tệp cơ sở dữ liệu SQLite offline (`chat_cache.db`, `datingly_module4.db`, ...) đảm bảo quyền riêng tư người dùng.
+
+---
+
 ## 📂 Cấu trúc Thư mục Dự án (PRM393 MVVM Pattern)
 
 Toàn bộ mã nguồn được tổ chức tinh gọn trong hai thư mục chính **`data`** và **`UI`**, không dùng `core` hoặc `services`:
@@ -67,21 +99,22 @@ lib/
 │   │   ├── match_model.dart                # Model dữ liệu cặp đôi tương hợp
 │   │   ├── message_model.dart              # Model tin nhắn văn bản real-time
 │   │   ├── profile_constants.dart          # Hằng số danh mục sở thích, định hướng hẹn hò, prompts
+│   │   ├── report_model.dart               # Model báo cáo vi phạm người dùng & lý do
 │   │   └── user_model.dart                 # Model người dùng, parse Firestore & JSON caching
 │   │
 │   └── repositories/                       # Tầng Repository & Data Access (kết nối Firebase/Local)
 │       ├── ai_repository.dart              # Xử lý gợi ý tin nhắn qua Google Gemini AI
 │       ├── app_providers.dart              # Khai báo Riverpod Providers cho các Repository
 │       ├── auth_repository.dart            # Nghiệp vụ xác thực Firebase Auth (Email & Phone OTP)
-│       ├── chat_repository.dart            # Quản lý tin nhắn và phòng chat trên Firestore
+│       ├── chat_repository.dart            # Quản lý tin nhắn, phòng chat và media trên Firestore
 │       ├── data_helper.dart                # Singleton giữ kết nối Firestore, Auth và Storage
 │       ├── discovery_repository.dart       # Quản lý quẹt thẻ, matching và query thẻ hẹn hò
 │       ├── geo_utils.dart                  # Hàm tính cự ly khoảng cách Haversine (km)
 │       ├── location_repository.dart        # Quản lý quyền và lấy toạ độ GPS (Geolocator)
 │       ├── notification_repository.dart    # Cấu hình FCM Token, Local Notifications & background
 │       ├── seed_repository.dart            # Tạo/xóa 30 hồ sơ mock dữ liệu phục vụ test
-│       ├── setting_repository.dart         # Quản lý SharedPreferences (Cấu hình & Cache user)
-│       └── user_repository.dart            # CRUD hồ sơ người dùng và upload ảnh lên Firebase Storage
+│       ├── setting_repository.dart         # Quản lý SharedPreferences (Cấu hình, Ghost Mode, Dark Mode & Cache user)
+│       └── user_repository.dart            # CRUD hồ sơ người dùng, block/unblock, report và upload ảnh
 │
 ├── UI/
 │   ├── app_colors.dart                     # Bảng màu chuẩn thương hiệu DatingLy
@@ -94,7 +127,8 @@ lib/
 │   │   ├── discovery_view_model.dart       # Quản lý hàng đợi thẻ quẹt (Swipes) và bộ lọc
 │   │   ├── notification_bootstrap.dart     # Listener lắng nghe và kích hoạt thông báo
 │   │   ├── preferences_view_model.dart     # Quản lý trạng thái theme và cấu hình chung
-│   │   └── profile_view_model.dart         # Quản lý cập nhật hồ sơ cá nhân và ảnh đại diện
+│   │   ├── profile_view_model.dart         # Quản lý cập nhật hồ sơ cá nhân và ảnh đại diện
+│   │   └── settings_view_model.dart        # Quản lý cài đặt bảo mật, ghost mode, danh sách chặn & đăng xuất
 │   │
 │   └── Views/                              # Tầng View (Giao diện hiển thị)
 │       ├── Screen/                         # Màn hình ứng dụng
@@ -109,7 +143,10 @@ lib/
 │       │   ├── who_liked_you_screen.dart   # Danh sách những người đã thích bạn
 │       │   ├── match_list_screen.dart      # Danh sách tương hợp và hội thoại
 │       │   ├── chat_screen.dart            # Phòng nhắn tin trực tiếp tích hợp gợi ý AI
-│       │   └── mini_game_screen.dart       # Minigame hỏi nhanh đáp gọn phá băng
+│       │   ├── mini_game_screen.dart       # Minigame hỏi nhanh đáp gọn phá băng
+│       │   ├── account_settings_screen.dart# Cài đặt tài khoản, đổi Email/Password, Theme, Ghost Mode
+│       │   ├── safety_screen.dart          # Trung tâm an toàn: Báo cáo vi phạm & Quản lý danh sách chặn
+│       │   └── media_gallery_screen.dart   # Thư viện ảnh chat toàn màn hình & Tải ảnh về thiết bị
 │       │
 │       └── Widget/                         # Các widget tái sử dụng
 │           ├── app_branding_widget.dart    # Logo, biểu tượng và slogan thương hiệu
