@@ -297,17 +297,17 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: Theme.of(context).brightness == Brightness.dark ? null : Colors.grey[50],
       appBar: AppBar(
         title: const Text(
           'Chỉnh sửa hồ sơ',
           style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
         ),
         centerTitle: true,
-        backgroundColor: Colors.white,
+        backgroundColor: Theme.of(context).colorScheme.surface,
         elevation: 0.5,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: Colors.black87),
+          icon: Icon(Icons.arrow_back_ios, color: Theme.of(context).colorScheme.onSurface),
           onPressed: () => context.pop(),
         ),
         actions: [
@@ -354,7 +354,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen>
                   padding: const EdgeInsets.all(28),
                   margin: const EdgeInsets.symmetric(horizontal: 40),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: Theme.of(context).colorScheme.surface,
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Column(
@@ -519,7 +519,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen>
                       decoration: BoxDecoration(
                         color: isHovered
                             ? AppColors.primary.withValues(alpha: 0.08)
-                            : Colors.white,
+                            : Theme.of(context).colorScheme.surface,
                         borderRadius: BorderRadius.circular(14),
                         border: Border.all(
                           color:
@@ -589,7 +589,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen>
               counterText: '',
               hintText: 'Viết vài dòng giới thiệu bản thân, sở thích hay câu nói tâm đắc...',
               filled: true,
-              fillColor: Colors.white,
+              fillColor: Theme.of(context).colorScheme.surface,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(14),
               ),
@@ -607,7 +607,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen>
                       prompt,
                       style: const TextStyle(fontSize: 12),
                     ),
-                    backgroundColor: Colors.white,
+                    backgroundColor: Theme.of(context).colorScheme.surface,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
                       side: BorderSide(
@@ -706,10 +706,10 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen>
                       const SizedBox(width: 6),
                       Text(
                         cat.categoryName,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
-                          color: Colors.black87,
+                          color: Theme.of(context).colorScheme.onSurface,
                         ),
                       ),
                     ],
@@ -725,12 +725,12 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen>
                       selected: isSelected,
                       labelStyle: TextStyle(
                         fontSize: 12,
-                        color: isSelected ? Colors.white : Colors.black87,
+                        color: isSelected ? Colors.white : Theme.of(context).colorScheme.onSurface,
                         fontWeight:
                             isSelected ? FontWeight.bold : FontWeight.w500,
                       ),
                       selectedColor: AppColors.primary,
-                      backgroundColor: Colors.white,
+                      backgroundColor: Theme.of(context).colorScheme.surface,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(18),
                         side: BorderSide(
@@ -766,7 +766,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen>
             decoration: InputDecoration(
               labelText: 'Họ và tên',
               filled: true,
-              fillColor: Colors.white,
+              fillColor: Theme.of(context).colorScheme.surface,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(14),
               ),
@@ -780,7 +780,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen>
             decoration: InputDecoration(
               labelText: 'Giới tính',
               filled: true,
-              fillColor: Colors.white,
+              fillColor: Theme.of(context).colorScheme.surface,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(14),
               ),
@@ -798,7 +798,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen>
             decoration: InputDecoration(
               labelText: 'Mục tiêu / Định hướng hẹn hò',
               filled: true,
-              fillColor: Colors.white,
+              fillColor: Theme.of(context).colorScheme.surface,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(14),
               ),
@@ -1173,9 +1173,9 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen>
                 margin: const EdgeInsets.only(bottom: 10),
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: Theme.of(context).colorScheme.surface,
                   borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: Colors.grey[200]!),
+                  border: Border.all(color: Theme.of(context).dividerColor),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1198,9 +1198,9 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen>
           Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: Theme.of(context).colorScheme.surface,
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: Colors.grey[200]!),
+              border: Border.all(color: Theme.of(context).dividerColor),
             ),
             child: Row(
               children: [

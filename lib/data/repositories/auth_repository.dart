@@ -2,7 +2,6 @@
 import 'data_helper.dart';
 
 /// AuthRepository: Phiên đăng nhập hiện tại + đăng nhập/đăng ký Email (PRM393 MVVM Pattern).
-/// Xác thực số điện thoại nằm ở [PhoneAuthRepository].
 class AuthRepository {
   final FirebaseAuth _auth = DataHelper().auth;
 

@@ -108,59 +108,41 @@ void main() {
     });
   });
 
-  group('AuthState & Resend OTP Timer Tests', () {
-    test('AuthState khởi tạo mặc định resendCountdown = 0 và isOtpSent = false', () {
+  group('AuthState Tests', () {
+    test('AuthState khởi tạo mặc định: chưa đăng nhập, không loading, không lỗi', () {
       const state = AuthState();
-      expect(state.resendCountdown, 0);
-      expect(state.isOtpSent, isFalse);
-      expect(state.verificationId, isNull);
+      expect(state.isLoading, isFalse);
+      expect(state.isAuthenticated, isFalse);
+      expect(state.errorMessage, isNull);
+      expect(state.userModel, isNull);
+      expect(state.onboardingCompleted, isFalse);
     });
 
-    test('AuthState copyWith cập nhật chính xác trạng thái OTP và countdown', () {
-      const state = AuthState();
-      final updated = state.copyWith(
-        isOtpSent: true,
-        verificationId: 'v_123456',
-        resendCountdown: 60,
-        phoneNumber: '+84912345678',
+    test('copyWith cập nhật đúng trường và clearError xóa thông báo lỗi', () {
+      const state = AuthState(errorMessage: 'Lỗi');
+      final loading = state.copyWith(isLoading: true, isAuthenticated: true);
+      expect(loading.isLoading, isTrue);
+      expect(loading.isAuthenticated, isTrue);
+      expect(loading.errorMessage, 'Lỗi'); // giữ nguyên khi không clear
+
+      expect(state.copyWith(clearError: true).errorMessage, isNull);
+    });
+
+    test('onboardingCompleted đúng theo cờ hoặc khi hồ sơ đã có tên', () {
+      expect(
+        const AuthState(userModel: UserModel(id: '1', onboardingCompleted: true))
+            .onboardingCompleted,
+        isTrue,
       );
-
-      expect(updated.isOtpSent, isTrue);
-      expect(updated.verificationId, 'v_123456');
-      expect(updated.resendCountdown, 60);
-      expect(updated.phoneNumber, '+84912345678');
-    });
-
-    test('Resend timer đếm ngược giảm 1 sau mỗi giây và kết thúc khi đạt 0', () async {
-      int countdown = 3;
-      final timerHistory = <int>[];
-
-      // Giả lập logic đếm ngược của startResendTimer
-      while (countdown > 0) {
-        timerHistory.add(countdown);
-        countdown--;
-      }
-      timerHistory.add(countdown);
-
-      expect(timerHistory, [3, 2, 1, 0]);
-      expect(countdown, 0);
-    });
-
-    test('formatPhoneNumber chuẩn hóa các định dạng số điện thoại về E.164 (+84...) chính xác', () {
-      final vm = AuthViewModel();
-      expect(vm.formatPhoneNumber('0912345678'), '+84912345678');
-      expect(vm.formatPhoneNumber('0912 345 678'), '+84912345678');
-      expect(vm.formatPhoneNumber('+84912345678'), '+84912345678');
-      expect(vm.formatPhoneNumber('912345678'), '+84912345678');
-    });
-
-    test('Mã OTP 6 chữ số hợp lệ và tự động phát hiện mã không đủ độ dài', () {
-      const codeShort = '12345';
-      const codeValid = '123456';
-
-      expect(codeShort.length < 6, isTrue);
-      expect(codeValid.length == 6, isTrue);
-      expect(RegExp(r'^\d{6}$').hasMatch(codeValid), isTrue);
+      expect(
+        const AuthState(userModel: UserModel(id: '2', fullName: 'Khánh'))
+            .onboardingCompleted,
+        isTrue,
+      );
+      expect(
+        const AuthState(userModel: UserModel(id: '3')).onboardingCompleted,
+        isFalse,
+      );
     });
   });
 

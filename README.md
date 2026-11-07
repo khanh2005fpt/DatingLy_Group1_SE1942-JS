@@ -12,7 +12,7 @@ DatingLy là ứng dụng hẹn hò trực tuyến hiện đại được xây d
 
 | Yêu cầu kỹ thuật | Giải pháp triển khai | Thành phần phụ trách |
 |---|---|---|
-| **Đăng nhập & Xác thực** | Firebase Authentication (Email/Password & Phone OTP) | `auth_repository.dart`, `auth_view_model.dart` |
+| **Đăng nhập & Xác thực** | Firebase Authentication (Email/Password) | `auth_repository.dart`, `auth_view_model.dart` |
 | **Thông báo đẩy (Notification)** | Firebase Cloud Messaging (FCM) + `flutter_local_notifications` | `notification_repository.dart`, `notification_bootstrap.dart` |
 | **Mô hình lập trình** | Chuẩn **MVVM** (Phân tách độc lập View – ViewModel – Repository – Model) | `lib/UI/Views`, `lib/UI/ViewModels`, `lib/data/` |
 | **Quản lý trạng thái** | Flutter Riverpod (`StateNotifierProvider`, `StreamProvider`, `FutureProvider`) | `app_providers.dart`, `*view_model.dart` |
@@ -27,9 +27,8 @@ DatingLy là ứng dụng hẹn hò trực tuyến hiện đại được xây d
 
 Module cốt lõi phụ trách luồng đăng nhập, khởi tạo hồ sơ và quản lý thông tin cá nhân:
 
-### 1. Phone/Email Auth & OTP Screen
+### 1. Đăng nhập / Đăng ký Email
 - **Đăng nhập/Đăng ký Email & Password**: Kiểm tra hợp lệ dữ liệu đầu vào, xử lý ngoại lệ `FirebaseAuthException` hiển thị thông báo thân thiện.
-- **Đăng nhập qua Số điện thoại (Phone Auth)**: Tích hợp xác thực OTP Firebase, có bộ đếm ngược thời gian resend OTP (60s timer).
 - **Auto-routing theo Auth State**: Lắng nghe `authStateChanges` qua `StreamProvider`, tự động điều hướng sang màn hình Onboarding hoặc Discovery tùy theo trạng thái hoàn thành hồ sơ.
 
 ### 2. Profile Setup & Media Stepper Screen
@@ -105,7 +104,7 @@ lib/
 │   └── repositories/                       # Tầng Repository & Data Access (kết nối Firebase/Local)
 │       ├── ai_repository.dart              # Xử lý gợi ý tin nhắn qua Google Gemini AI
 │       ├── app_providers.dart              # Khai báo Riverpod Providers cho các Repository
-│       ├── auth_repository.dart            # Nghiệp vụ xác thực Firebase Auth (Email & Phone OTP)
+│       ├── auth_repository.dart            # Nghiệp vụ xác thực Firebase Auth (Email/Password)
 │       ├── chat_repository.dart            # Quản lý tin nhắn, phòng chat và media trên Firestore
 │       ├── data_helper.dart                # Singleton giữ kết nối Firestore, Auth và Storage
 │       ├── discovery_repository.dart       # Quản lý quẹt thẻ, matching và query thẻ hẹn hò
@@ -122,7 +121,7 @@ lib/
 │   ├── app_theme.dart                      # Cấu hình ThemeData (Light / Dark mode)
 │   │
 │   ├── ViewModels/                         # Tầng ViewModel (Quản lý trạng thái giao diện Riverpod)
-│   │   ├── auth_view_model.dart            # StateNotifier đăng nhập, đăng ký, OTP và timer
+│   │   ├── auth_view_model.dart            # Notifier đăng nhập, đăng ký Email
 │   │   ├── chat_view_model.dart            # Quản lý tin nhắn và danh sách tương hợp
 │   │   ├── discovery_view_model.dart       # Quản lý hàng đợi thẻ quẹt (Swipes) và bộ lọc
 │   │   ├── notification_bootstrap.dart     # Listener lắng nghe và kích hoạt thông báo
@@ -132,7 +131,7 @@ lib/
 │   │
 │   └── Views/                              # Tầng View (Giao diện hiển thị)
 │       ├── Screen/                         # Màn hình ứng dụng
-│       │   ├── login_screen.dart           # Đăng nhập Email & Phone OTP
+│       │   ├── login_screen.dart           # Đăng nhập Email
 │       │   ├── register_screen.dart        # Đăng ký tài khoản mới
 │       │   ├── onboarding_screen.dart      # Stepper nhập hồ sơ nhiều bước
 │       │   ├── profile_screen.dart         # Xem hồ sơ cá nhân và cài đặt
@@ -180,7 +179,7 @@ $$\begin{matrix}
 - Flutter SDK $\ge 3.11.4$
 - Android Studio / VS Code
 - Tài khoản Firebase đã bật các dịch vụ:
-  - **Authentication**: Bật *Email/Password* và *Phone*.
+  - **Authentication**: Bật *Email/Password*.
   - **Cloud Firestore**: Khởi tạo database chế độ test/production.
   - **Firebase Storage**: Khởi tạo bucket lưu trữ ảnh.
   - **Cloud Messaging (FCM)**: Đăng ký ứng dụng Android/iOS.

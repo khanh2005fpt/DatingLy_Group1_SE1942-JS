@@ -3,7 +3,6 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'data_helper.dart';
 import 'setting_repository.dart';
 import 'auth_repository.dart';
-import 'phone_auth_repository.dart';
 import 'user_repository.dart';
 import 'discovery_repository.dart';
 import 'chat_repository.dart';
@@ -26,9 +25,6 @@ SettingRepository settingRepository(Ref ref) {
 
 @Riverpod(keepAlive: true)
 AuthRepository authRepository(Ref ref) => AuthRepository();
-
-@Riverpod(keepAlive: true)
-PhoneAuthRepository phoneAuthRepository(Ref ref) => PhoneAuthRepository();
 
 @Riverpod(keepAlive: true)
 UserRepository userRepository(Ref ref) => UserRepository();
