@@ -410,8 +410,8 @@ class _AccountSettingsScreenState extends ConsumerState<AccountSettingsScreen> {
 
                 const SizedBox(height: 20),
 
-                // ── An toàn ──────────────────────────────────────────────────
-                _SectionHeader(title: 'An toàn'),
+                // ── An toàn & Tiện ích ──────────────────────────────────────────
+                _SectionHeader(title: 'An toàn & Tiện ích'),
                 _SettingsCard(
                   children: [
                     ListTile(
@@ -423,6 +423,20 @@ class _AccountSettingsScreenState extends ConsumerState<AccountSettingsScreen> {
                       subtitle: const Text('Báo cáo, chặn người dùng vi phạm'),
                       trailing: const Icon(Icons.chevron_right),
                       onTap: () => context.push('/settings/safety'),
+                    ),
+                    const Divider(height: 1, indent: 56),
+                    ListTile(
+                      leading: const Icon(
+                        Icons.photo_library_outlined,
+                        color: AppColors.primary,
+                      ),
+                      title: const Text('Thư viện ảnh Media'),
+                      subtitle: const Text(
+                        'Xem ảnh trò chuyện & tải ảnh về máy',
+                      ),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () =>
+                          context.push('/settings/media-gallery/demo_match'),
                     ),
                   ],
                 ),
