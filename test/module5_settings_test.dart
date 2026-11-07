@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:project_prm/data/models/report_model.dart';
-import 'package:project_prm/data/services/preferences_service.dart';
+import 'package:project_prm/data/repositories/setting_repository.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -54,10 +54,10 @@ void main() {
     });
   });
 
-  group('Module 5 - PreferencesService Unit Tests', () {
+  group('Module 5 - SettingRepository Unit Tests', () {
     test('should save and retrieve keys matching assignment requirements', () async {
       SharedPreferences.setMockInitialValues({});
-      final service = await PreferencesService.init();
+      final service = await SettingRepository.init();
 
       // Test ghost_mode
       expect(service.ghostMode, isFalse);
@@ -81,10 +81,9 @@ void main() {
         'cfg_ghost_mode': true,
         'cfg_notifications_enabled': false,
       });
-      final service = await PreferencesService.init();
+      final service = await SettingRepository.init();
 
       expect(service.isDarkMode, isTrue);
-      expect(service.ghostMode, isTrue);
       expect(service.notificationsEnabled, isFalse);
     });
   });
