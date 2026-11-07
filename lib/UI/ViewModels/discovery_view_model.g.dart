@@ -95,7 +95,7 @@ final class DiscoveryViewModelProvider
 }
 
 String _$discoveryViewModelHash() =>
-    r'8e9802acfc375b2655b221916307da8389266da8';
+    r'146a7e67d7af4728a3419eaf0865ecf6041cb8b5';
 
 abstract class _$DiscoveryViewModel extends $Notifier<DiscoveryState> {
   DiscoveryState build();
@@ -115,24 +115,29 @@ abstract class _$DiscoveryViewModel extends $Notifier<DiscoveryState> {
   }
 }
 
-@ProviderFor(matchCount)
-final matchCountProvider = MatchCountProvider._();
+/// Tổng số tin chưa đọc trên mọi match (badge ở icon chat).
 
-final class MatchCountProvider extends $FunctionalProvider<int, int, int>
+@ProviderFor(unreadCount)
+final unreadCountProvider = UnreadCountProvider._();
+
+/// Tổng số tin chưa đọc trên mọi match (badge ở icon chat).
+
+final class UnreadCountProvider extends $FunctionalProvider<int, int, int>
     with $Provider<int> {
-  MatchCountProvider._()
+  /// Tổng số tin chưa đọc trên mọi match (badge ở icon chat).
+  UnreadCountProvider._()
     : super(
         from: null,
         argument: null,
         retry: null,
-        name: r'matchCountProvider',
+        name: r'unreadCountProvider',
         isAutoDispose: false,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
 
   @override
-  String debugGetCreateSourceHash() => _$matchCountHash();
+  String debugGetCreateSourceHash() => _$unreadCountHash();
 
   @$internal
   @override
@@ -141,7 +146,7 @@ final class MatchCountProvider extends $FunctionalProvider<int, int, int>
 
   @override
   int create(Ref ref) {
-    return matchCount(ref);
+    return unreadCount(ref);
   }
 
   /// {@macro riverpod.override_with_value}
@@ -153,4 +158,4 @@ final class MatchCountProvider extends $FunctionalProvider<int, int, int>
   }
 }
 
-String _$matchCountHash() => r'3cb6600218ef7464839491186ded2b7f533d2086';
+String _$unreadCountHash() => r'8be18b98409330de38761664c150db8c508f84ff';

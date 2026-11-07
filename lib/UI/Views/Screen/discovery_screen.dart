@@ -104,6 +104,13 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Reset vị trí thẻ khi bắt đầu tải lại (đổi filter / refresh)
+    ref.listen<bool>(
+      discoveryViewModelProvider.select((s) => s.isLoading),
+      (_, loading) {
+        if (loading) _consumed = 0;
+      },
+    );
     return Scaffold(
       appBar: AppBar(
         toolbarHeight: 78,
@@ -144,7 +151,7 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
           ),
           Consumer(
             builder: (context, ref, _) {
-              final unreadCount = ref.watch(matchCountProvider);
+              final unreadCount = ref.watch(unreadCountProvider);
               return Stack(
                 alignment: Alignment.center,
                 children: [
@@ -194,14 +201,13 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
     final state = ref.watch(discoveryViewModelProvider);
 
     if (state.isLoading) {
-      // Reset vị trí khi tải lại (đổi filter / refresh)
-      _consumed = 0;
       return const Center(
         child: CircularProgressIndicator(color: AppColors.primary),
       );
     }
 
-    if (state.errorMessage != null && state.cards.isEmpty) {
+    final exhausted = _consumed >= state.cards.length;
+    if (state.errorMessage != null && exhausted) {
       return _messageView(
         icon: Icons.error_outline,
         text: state.errorMessage!,
@@ -211,9 +217,16 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
       );
     }
 
-    final exhausted = _consumed >= state.cards.length;
     if (exhausted) {
       if (state.hasMore || state.isLoadingMore) {
+        // Trang vừa tải bị lọc sạch: không còn thẻ để quẹt nên phải tự tải tiếp
+        if (!state.isLoadingMore) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              ref.read(discoveryViewModelProvider.notifier).loadMore();
+            }
+          });
+        }
         return const Center(
           child: CircularProgressIndicator(color: AppColors.primary),
         );

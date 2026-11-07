@@ -139,6 +139,21 @@ class _DiscoveryFilterScreenState extends ConsumerState<DiscoveryFilterScreen> {
               _draft = _draft.copyWith(maxDistanceKm: v.round());
             }),
           ),
+          if (ref.watch(discoveryViewModelProvider
+                  .select((s) => !s.isLoading && s.myLocation == null)))
+            const Row(
+              children: [
+                Icon(Icons.location_off_outlined,
+                    size: 16, color: Colors.orange),
+                SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    'Bật vị trí để lọc theo khoảng cách',
+                    style: TextStyle(fontSize: 12, color: Colors.orange),
+                  ),
+                ),
+              ],
+            ),
           const SizedBox(height: 16),
           _section('Quan tâm đến', null),
           Wrap(
@@ -159,6 +174,11 @@ class _DiscoveryFilterScreenState extends ConsumerState<DiscoveryFilterScreen> {
             contentPadding: EdgeInsets.zero,
             activeThumbColor: AppColors.primary,
             title: const Text('Chỉ hiện người có sở thích chung'),
+            // Đã chọn chip thì luôn lọc theo chip, công tắc chỉ khóa được khi bỏ hết chip
+            onChanged: _draft.interests.isNotEmpty
+                ? null
+                : (v) => setState(
+                    () => _draft = _draft.copyWith(requireCommonInterest: v)),
             subtitle: Text(
               _draft.interests.isEmpty
                   ? 'Dùng sở thích trong hồ sơ của bạn'
@@ -166,8 +186,6 @@ class _DiscoveryFilterScreenState extends ConsumerState<DiscoveryFilterScreen> {
               style: const TextStyle(fontSize: 12),
             ),
             value: _draft.requireCommonInterest,
-            onChanged: (v) => setState(
-                () => _draft = _draft.copyWith(requireCommonInterest: v)),
           ),
           Wrap(
             spacing: 8,
@@ -181,7 +199,11 @@ class _DiscoveryFilterScreenState extends ConsumerState<DiscoveryFilterScreen> {
                       onSelected: (on) => setState(() {
                         final list = [..._draft.interests];
                         on ? list.add(t) : list.remove(t);
-                        _draft = _draft.copyWith(interests: list);
+                        // Chọn chip là đang lọc theo sở thích -> bật công tắc cho khớp
+                        _draft = _draft.copyWith(
+                          interests: list,
+                          requireCommonInterest: on ? true : null,
+                        );
                       }),
                     ))
                 .toList(),

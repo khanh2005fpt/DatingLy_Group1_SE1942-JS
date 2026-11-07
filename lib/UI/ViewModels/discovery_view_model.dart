@@ -182,11 +182,23 @@ class DiscoveryViewModel extends _$DiscoveryViewModel {
       );
     } catch (e) {
       if (gen == _generation) {
-        state = state.copyWith(isLoadingMore: false, hasMore: false);
+        state = state.copyWith(
+          isLoadingMore: false,
+          hasMore: false,
+          errorMessage: 'Không tải thêm được gợi ý: $e',
+        );
       }
     }
   }
 
+  /// Gọi sau khi rewind (xóa swipe) để người đó hiện lại trong Discovery.
+  /// reload() đọc lại danh sách loại trừ từ Firestore nên swipe đã xóa không còn chặn.
+  Future<void> restore(String userId) {
+    _excluded.remove(userId);
+    return reload();
+  }
+
+  /// Khoảng cách (km) tới [user], null nếu thiếu vị trí.
   double? distanceTo(UserModel user) {
     final me = state.myLocation;
     final them = user.location;
@@ -212,7 +224,9 @@ class DiscoveryViewModel extends _$DiscoveryViewModel {
   }
 }
 
+/// Tổng số tin chưa đọc trên mọi match (badge ở icon chat).
 @Riverpod(keepAlive: true)
-int matchCount(Ref ref) {
-  return ref.watch(matchesStreamProvider).value?.length ?? 0;
+int unreadCount(Ref ref) {
+  final matches = ref.watch(matchesStreamProvider).value ?? const [];
+  return matches.fold(0, (s, m) => s + m.unreadCount);
 }

@@ -17,6 +17,45 @@ class DiscoveryPage {
   });
 }
 
+/// Lọc 1 ứng viên Discovery. Hàm thuần (không gọi Firestore) để unit test.
+/// [data] là dữ liệu thô của doc (đọc `blocked_users`, `ghost_mode`).
+bool passesDiscoveryFilter({
+  required String myId,
+  required Map<String, dynamic> data,
+  required UserModel user,
+  required DiscoveryFilter filter,
+  GeoPoint? myLocation,
+}) {
+  if (user.id == myId) return false;
+  if (data['ghost_mode'] == true) return false; // đang ẩn danh (module Sơn)
+
+  // Đối phương đã chặn mình
+  final theirBlocked = data['blocked_users'];
+  if (theirBlocked is List && theirBlocked.contains(myId)) return false;
+
+  if (user.fullName.trim().isEmpty) return false; // hồ sơ chưa hoàn tất
+  if (user.age < filter.minAge || user.age > filter.maxAge) return false;
+  if (filter.filtersByGender && user.gender != filter.interestedIn) {
+    return false;
+  }
+
+  // Khoảng cách: mình có vị trí thì người không có vị trí bị ẩn
+  if (myLocation != null) {
+    final loc = user.location;
+    if (loc == null) return false;
+    final km = haversineKm(myLocation.latitude, myLocation.longitude,
+        loc.latitude, loc.longitude);
+    if (km > filter.maxDistanceKm) return false;
+  }
+
+  // Sở thích: chọn tag nào thì lọc theo tag đó, không phụ thuộc công tắc
+  if (filter.interests.isNotEmpty &&
+      !user.tags.any(filter.interests.contains)) {
+    return false;
+  }
+  return true;
+}
+
 class DiscoveryRepository {
   final DataHelper _helper = DataHelper();
   final UserRepository _userRepo = UserRepository();
@@ -66,28 +105,16 @@ class DiscoveryRepository {
 
       for (final doc in snap.docs) {
         if (excludedIds.contains(doc.id)) continue;
-        final data = doc.data();
-
-        final theirBlocked = data['blocked_users'];
-        if (theirBlocked is List && theirBlocked.contains(myId)) continue;
-
         final user = UserModel.fromFirestore(doc);
-        if (user.fullName.trim().isEmpty) continue;
-        if (filter.interestedIn != DiscoveryFilter.anyGender &&
-            user.gender != filter.interestedIn) {
+        if (!passesDiscoveryFilter(
+          myId: myId,
+          data: doc.data(),
+          user: user,
+          filter: filter,
+          myLocation: myLocation,
+        )) {
           continue;
         }
-
-        if (myLocation != null && user.location != null) {
-          final km = haversineKm(myLocation.latitude, myLocation.longitude,
-              user.location!.latitude, user.location!.longitude);
-          if (km > filter.maxDistanceKm) continue;
-        }
-
-        if (filter.requireCommonInterest && filter.interests.isNotEmpty) {
-          if (!user.tags.any(filter.interests.contains)) continue;
-        }
-
         users.add(user);
         if (users.length >= pageSize) break;
       }
