@@ -446,19 +446,47 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
             const SizedBox(height: 18),
             Center(
               child: authState.resendCountdown > 0
-                  ? Text(
-                      'Gửi lại mã sau (${authState.resendCountdown}s)',
-                      style: TextStyle(
-                        color: Colors.grey[500],
-                        fontWeight: FontWeight.w500,
-                        fontSize: 13,
+                  ? Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(24),
+                        border: Border.all(
+                          color: AppColors.primary.withValues(alpha: 0.2),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const SizedBox(
+                            width: 14,
+                            height: 14,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Text(
+                            'Gửi lại mã OTP sau ${authState.resendCountdown}s',
+                            style: const TextStyle(
+                              color: AppColors.primary,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ],
                       ),
                     )
                   : TextButton.icon(
                       icon: const Icon(Icons.refresh_rounded, size: 18),
                       label: const Text(
                         'Chưa nhận được mã? Gửi lại OTP',
-                        style: TextStyle(fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.primary,
+                        ),
                       ),
                       onPressed: isLoading ? null : _handleResendOtp,
                     ),
