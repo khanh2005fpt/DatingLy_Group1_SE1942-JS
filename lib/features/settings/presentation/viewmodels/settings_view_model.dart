@@ -1,10 +1,12 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:path/path.dart' as p;
+import 'package:sqflite/sqflite.dart';
 import '../../../../core/providers/app_providers.dart';
 import '../../../../data/models/report_model.dart';
 import '../../../../data/models/user_model.dart';
-import '../../../../data/services/firebase_storage_service.dart';
 
 // ─── State ───────────────────────────────────────────────────────────────────
 
@@ -144,12 +146,37 @@ class SettingsViewModel extends Notifier<SettingsState> {
 
   // ─── Sign Out / Clear Cache ─────────────────────────────────────────
 
+  Future<void> _clearSqliteCache() async {
+    try {
+      if (!kIsWeb &&
+          (defaultTargetPlatform == TargetPlatform.android ||
+              defaultTargetPlatform == TargetPlatform.iOS ||
+              defaultTargetPlatform == TargetPlatform.macOS)) {
+        final dbFolder = await getDatabasesPath();
+        final dbNames = [
+          'chat_cache.db',
+          'datingly_module4.db',
+          'notifications.db',
+          'swiped_history_cache.db',
+        ];
+        for (final name in dbNames) {
+          final filePath = p.join(dbFolder, name);
+          await deleteDatabase(filePath);
+        }
+      }
+    } catch (e) {
+      debugPrint('Lỗi dọn dẹp SQLite cache khi đăng xuất: $e');
+    }
+  }
+
   Future<void> signOut() async {
     state = state.copyWith(isLoading: true);
     try {
-      // 1. Xóa toàn bộ SharedPreferences
+      // 1. Xóa toàn bộ SharedPreferences cục bộ
       await ref.read(preferencesServiceProvider).clearAll();
-      // 2. Đăng xuất Firebase
+      // 2. Xóa các database SQLite cache (offline chat, notifications, activity log)
+      await _clearSqliteCache();
+      // 3. Đăng xuất Firebase Auth
       await FirebaseAuth.instance.signOut();
       state = state.copyWith(isLoading: false);
     } catch (e) {
@@ -157,27 +184,51 @@ class SettingsViewModel extends Notifier<SettingsState> {
     }
   }
 
-  // ─── Email / Password Update ─────────────────────────────────────────
+  // ─── Re-authenticate / Email / Password Update ───────────────────────
 
-  Future<void> updateEmail(String newEmail) async {
-    state = state.copyWith(isLoading: true);
+  /// Re-authenticate với mật khẩu hiện tại trước khi đổi email hoặc mật khẩu
+  Future<void> reauthenticate(String currentPassword) async {
+    final user = FirebaseAuth.instance.currentUser;
+    final email = user?.email;
+    if (user == null || email == null) {
+      throw Exception('Không tìm thấy tài khoản người dùng đang đăng nhập');
+    }
+    final cred = EmailAuthProvider.credential(
+      email: email,
+      password: currentPassword,
+    );
+    await user.reauthenticateWithCredential(cred);
+  }
+
+  Future<void> updateEmail({
+    required String currentPassword,
+    required String newEmail,
+  }) async {
+    state = state.copyWith(isLoading: true, error: null);
     try {
+      await reauthenticate(currentPassword);
       await FirebaseAuth.instance.currentUser?.verifyBeforeUpdateEmail(
-        newEmail,
+        newEmail.trim(),
       );
       state = state.copyWith(isLoading: false);
     } catch (e) {
       state = state.copyWith(isLoading: false, error: e.toString());
+      rethrow;
     }
   }
 
-  Future<void> updatePassword(String newPassword) async {
-    state = state.copyWith(isLoading: true);
+  Future<void> updatePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    state = state.copyWith(isLoading: true, error: null);
     try {
+      await reauthenticate(currentPassword);
       await FirebaseAuth.instance.currentUser?.updatePassword(newPassword);
       state = state.copyWith(isLoading: false);
     } catch (e) {
       state = state.copyWith(isLoading: false, error: e.toString());
+      rethrow;
     }
   }
 }

@@ -18,65 +18,23 @@ class _AccountSettingsScreenState extends ConsumerState<AccountSettingsScreen> {
   // ─── Dialogs ──────────────────────────────────────────────────────────────
 
   Future<void> _showChangeEmailDialog() async {
-    final ctrl = TextEditingController();
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Đổi Email'),
-        content: TextField(
-          controller: ctrl,
-          keyboardType: TextInputType.emailAddress,
-          decoration: const InputDecoration(
-            hintText: 'Email mới',
-            prefixIcon: Icon(Icons.email_outlined),
-            border: OutlineInputBorder(),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(_, false),
-            child: const Text('Hủy'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(_, true),
-            child: const Text('Cập nhật'),
-          ),
-        ],
-      ),
-    );
-    if (confirmed == true && ctrl.text.trim().isNotEmpty) {
-      await ref
-          .read(settingsViewModelProvider.notifier)
-          .updateEmail(ctrl.text.trim());
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Email xác nhận đã được gửi tới địa chỉ mới. Vui lòng kiểm tra hộp thư.',
-            ),
-          ),
-        );
-      }
-    }
-  }
-
-  Future<void> _showChangePasswordDialog() async {
-    final ctrl = TextEditingController();
-    final confirmCtrl = TextEditingController();
+    final currentPassCtrl = TextEditingController();
+    final newEmailCtrl = TextEditingController();
     bool obscure = true;
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (_) => StatefulBuilder(
         builder: (ctx, setState) => AlertDialog(
-          title: const Text('Đổi Mật khẩu'),
+          title: const Text('Đổi Email'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               TextField(
-                controller: ctrl,
+                controller: currentPassCtrl,
                 obscureText: obscure,
                 decoration: InputDecoration(
-                  hintText: 'Mật khẩu mới',
+                  hintText: 'Mật khẩu hiện tại',
                   prefixIcon: const Icon(Icons.lock_outline),
                   border: const OutlineInputBorder(),
                   suffixIcon: IconButton(
@@ -89,11 +47,11 @@ class _AccountSettingsScreenState extends ConsumerState<AccountSettingsScreen> {
               ),
               const SizedBox(height: 12),
               TextField(
-                controller: confirmCtrl,
-                obscureText: obscure,
+                controller: newEmailCtrl,
+                keyboardType: TextInputType.emailAddress,
                 decoration: const InputDecoration(
-                  hintText: 'Xác nhận mật khẩu',
-                  prefixIcon: Icon(Icons.lock_outline),
+                  hintText: 'Email mới',
+                  prefixIcon: Icon(Icons.email_outlined),
                   border: OutlineInputBorder(),
                 ),
               ),
@@ -106,15 +64,19 @@ class _AccountSettingsScreenState extends ConsumerState<AccountSettingsScreen> {
             ),
             ElevatedButton(
               onPressed: () {
-                if (ctrl.text == confirmCtrl.text && ctrl.text.length >= 6) {
-                  Navigator.pop(ctx, true);
-                } else {
+                if (currentPassCtrl.text.isEmpty) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Mật khẩu không khớp hoặc ít hơn 6 ký tự'),
-                    ),
+                    const SnackBar(content: Text('Vui lòng nhập mật khẩu hiện tại')),
                   );
+                  return;
                 }
+                if (!newEmailCtrl.text.contains('@')) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Vui lòng nhập địa chỉ email hợp lệ')),
+                  );
+                  return;
+                }
+                Navigator.pop(ctx, true);
               },
               child: const Text('Cập nhật'),
             ),
@@ -122,14 +84,166 @@ class _AccountSettingsScreenState extends ConsumerState<AccountSettingsScreen> {
         ),
       ),
     );
-    if (confirmed == true) {
-      await ref
-          .read(settingsViewModelProvider.notifier)
-          .updatePassword(ctrl.text);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Mật khẩu đã được cập nhật!')),
-        );
+
+    if (confirmed == true && mounted) {
+      try {
+        await ref.read(settingsViewModelProvider.notifier).updateEmail(
+              currentPassword: currentPassCtrl.text,
+              newEmail: newEmailCtrl.text.trim(),
+            );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              backgroundColor: Colors.green,
+              content: Text(
+                'Email xác nhận đã được gửi tới địa chỉ mới. Vui lòng kiểm tra hộp thư.',
+              ),
+            ),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          final errorMsg = e.toString().contains('wrong-password') ||
+                  e.toString().contains('invalid-credential')
+              ? 'Mật khẩu hiện tại không chính xác'
+              : 'Lỗi đổi email: $e';
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(backgroundColor: Colors.red, content: Text(errorMsg)),
+          );
+        }
+      }
+    }
+  }
+
+  Future<void> _showChangePasswordDialog() async {
+    final currentPassCtrl = TextEditingController();
+    final newPassCtrl = TextEditingController();
+    final confirmCtrl = TextEditingController();
+    bool obscureCurrent = true;
+    bool obscureNew = true;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => StatefulBuilder(
+        builder: (ctx, setState) => AlertDialog(
+          title: const Text('Đổi Mật khẩu'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: currentPassCtrl,
+                  obscureText: obscureCurrent,
+                  decoration: InputDecoration(
+                    hintText: 'Mật khẩu hiện tại',
+                    prefixIcon: const Icon(Icons.lock_outline),
+                    border: const OutlineInputBorder(),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        obscureCurrent
+                            ? Icons.visibility
+                            : Icons.visibility_off,
+                      ),
+                      onPressed: () =>
+                          setState(() => obscureCurrent = !obscureCurrent),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: newPassCtrl,
+                  obscureText: obscureNew,
+                  decoration: InputDecoration(
+                    hintText: 'Mật khẩu mới (ít nhất 6 ký tự)',
+                    prefixIcon: const Icon(Icons.lock_reset),
+                    border: const OutlineInputBorder(),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        obscureNew
+                            ? Icons.visibility
+                            : Icons.visibility_off,
+                      ),
+                      onPressed: () => setState(() => obscureNew = !obscureNew),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: confirmCtrl,
+                  obscureText: obscureNew,
+                  decoration: const InputDecoration(
+                    hintText: 'Xác nhận mật khẩu mới',
+                    prefixIcon: Icon(Icons.check_circle_outline),
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Hủy'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                if (currentPassCtrl.text.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Vui lòng nhập mật khẩu hiện tại'),
+                    ),
+                  );
+                  return;
+                }
+                if (newPassCtrl.text.length < 6) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Mật khẩu mới phải từ 6 ký tự trở lên'),
+                    ),
+                  );
+                  return;
+                }
+                if (newPassCtrl.text != confirmCtrl.text) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Mật khẩu xác nhận không khớp'),
+                    ),
+                  );
+                  return;
+                }
+                Navigator.pop(ctx, true);
+              },
+              child: const Text('Cập nhật'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      try {
+        await ref.read(settingsViewModelProvider.notifier).updatePassword(
+              currentPassword: currentPassCtrl.text,
+              newPassword: newPassCtrl.text,
+            );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              backgroundColor: Colors.green,
+              content: Text('Mật khẩu đã được cập nhật thành công!'),
+            ),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          final errorMsg = e.toString().contains('wrong-password') ||
+                  e.toString().contains('invalid-credential')
+              ? 'Mật khẩu hiện tại không chính xác'
+              : 'Lỗi đổi mật khẩu: $e';
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(backgroundColor: Colors.red, content: Text(errorMsg)),
+          );
+        }
       }
     }
   }
@@ -137,7 +251,7 @@ class _AccountSettingsScreenState extends ConsumerState<AccountSettingsScreen> {
   Future<void> _signOut() async {
     final confirm = await showDialog<bool>(
       context: context,
-      builder: (_) => AlertDialog(
+      builder: (dialogCtx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text('Đăng xuất'),
         content: const Text(
@@ -145,12 +259,12 @@ class _AccountSettingsScreenState extends ConsumerState<AccountSettingsScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(_, false),
+            onPressed: () => Navigator.pop(dialogCtx, false),
             child: const Text('Hủy'),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            onPressed: () => Navigator.pop(_, true),
+            onPressed: () => Navigator.pop(dialogCtx, true),
             child: const Text('Đăng xuất'),
           ),
         ],
@@ -248,7 +362,7 @@ class _AccountSettingsScreenState extends ConsumerState<AccountSettingsScreen> {
                         'Nhận thông báo match và tin nhắn mới',
                       ),
                       value: prefsState.notificationsEnabled,
-                      activeColor: AppColors.primary,
+                      activeThumbColor: AppColors.primary,
                       onChanged: (_) => ref
                           .read(preferencesViewModelProvider.notifier)
                           .toggleNotifications(),
@@ -262,7 +376,7 @@ class _AccountSettingsScreenState extends ConsumerState<AccountSettingsScreen> {
                       title: const Text('Chế độ tối'),
                       subtitle: const Text('Dark Mode'),
                       value: prefsState.isDarkMode,
-                      activeColor: AppColors.primary,
+                      activeThumbColor: AppColors.primary,
                       onChanged: (_) => ref
                           .read(preferencesViewModelProvider.notifier)
                           .toggleDarkMode(),
@@ -286,7 +400,7 @@ class _AccountSettingsScreenState extends ConsumerState<AccountSettingsScreen> {
                         'Tạm ẩn hồ sơ khỏi danh sách khám phá',
                       ),
                       value: settingsState.ghostMode,
-                      activeColor: AppColors.primary,
+                      activeThumbColor: AppColors.primary,
                       onChanged: (_) => ref
                           .read(settingsViewModelProvider.notifier)
                           .toggleGhostMode(),

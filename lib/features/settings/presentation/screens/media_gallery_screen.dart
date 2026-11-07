@@ -1,3 +1,5 @@
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/providers/app_providers.dart';
@@ -228,7 +230,7 @@ class _GridImageTile extends StatelessWidget {
             ),
           );
         },
-        errorBuilder: (_, __, ___) => Container(
+        errorBuilder: (_, _, _) => Container(
           color: Colors.grey.shade200,
           child: const Icon(Icons.broken_image, color: Colors.grey, size: 32),
         ),
@@ -245,6 +247,77 @@ class _FullscreenImage extends StatelessWidget {
 
   const _FullscreenImage({required this.url, required this.heroTag});
 
+  Future<void> _saveImageToDevice(BuildContext context) async {
+    try {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Row(
+            children: [
+              SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.white,
+                ),
+              ),
+              SizedBox(width: 12),
+              Text('Đang tải ảnh về thiết bị...'),
+            ],
+          ),
+          duration: Duration(seconds: 1),
+        ),
+      );
+
+      final client = HttpClient();
+      final request = await client.getUrl(Uri.parse(url));
+      final response = await request.close();
+      final bytes = await consolidateHttpClientResponseBytes(response);
+      client.close();
+
+      final fileName = 'datingly_media_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      String savedLocation = '';
+
+      if (!kIsWeb && Platform.isAndroid) {
+        final downloadDir = Directory('/storage/emulated/0/Download');
+        if (await downloadDir.exists()) {
+          final file = File('${downloadDir.path}/$fileName');
+          await file.writeAsBytes(bytes);
+          savedLocation = file.path;
+        }
+      }
+
+      if (savedLocation.isEmpty && !kIsWeb) {
+        final tempDir = Directory.systemTemp;
+        final file = File('${tempDir.path}/$fileName');
+        await file.writeAsBytes(bytes);
+        savedLocation = file.path;
+      }
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: Colors.green,
+            content: Text(
+              savedLocation.isNotEmpty
+                  ? 'Đã lưu ảnh thành công vào: $savedLocation'
+                  : 'Đã tải ảnh thành công!',
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: Colors.red,
+            content: Text('Lỗi khi lưu ảnh: $e'),
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
@@ -256,6 +329,11 @@ class _FullscreenImage extends StatelessWidget {
           foregroundColor: Colors.white,
           title: const Text('Xem ảnh', style: TextStyle(color: Colors.white)),
           actions: [
+            IconButton(
+              icon: const Icon(Icons.download_rounded, color: Colors.white),
+              tooltip: 'Lưu về máy',
+              onPressed: () => _saveImageToDevice(context),
+            ),
             IconButton(
               icon: const Icon(Icons.close, color: Colors.white),
               onPressed: () => Navigator.of(context).pop(),
@@ -271,7 +349,7 @@ class _FullscreenImage extends StatelessWidget {
               child: Image.network(
                 url,
                 fit: BoxFit.contain,
-                errorBuilder: (_, __, ___) => const Icon(
+                errorBuilder: (_, _, _) => const Icon(
                   Icons.broken_image,
                   color: Colors.white,
                   size: 80,

@@ -25,7 +25,6 @@ class _SafetyScreenState extends ConsumerState<SafetyScreen>
   final _descCtrl = TextEditingController();
   ReportReason _selectedReason = ReportReason.spam;
   XFile? _screenshotFile;
-  bool _reportSent = false;
 
   @override
   void initState() {
@@ -80,7 +79,6 @@ class _SafetyScreenState extends ConsumerState<SafetyScreen>
 
     if (error == null) {
       setState(() {
-        _reportSent = true;
         _reportIdCtrl.clear();
         _descCtrl.clear();
         _screenshotFile = null;
@@ -279,7 +277,7 @@ class _SafetyScreenState extends ConsumerState<SafetyScreen>
                           Image.network(
                             _screenshotFile!.path,
                             fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => const Center(
+                            errorBuilder: (_, _, _) => const Center(
                               child: Icon(
                                 Icons.image,
                                 size: 40,
@@ -411,7 +409,7 @@ class _SafetyScreenState extends ConsumerState<SafetyScreen>
       child: ListView.separated(
         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
         itemCount: state.blockedUsers.length,
-        separatorBuilder: (_, __) => const SizedBox(height: 8),
+        separatorBuilder: (_, _) => const SizedBox(height: 8),
         itemBuilder: (_, i) {
           final user = state.blockedUsers[i];
           return _BlockedUserTile(

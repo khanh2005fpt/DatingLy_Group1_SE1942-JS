@@ -235,7 +235,7 @@ class FirestoreService {
     });
   }
 
-  /// Lấy danh sách user bị chặn của myId (trả về List<UserModel>)
+  /// Lấy danh sách user bị chặn của myId (trả về `List<UserModel>`)
   Future<List<UserModel>> getBlockedUsers(String myId) async {
     final doc = await _usersCol.doc(myId).get();
     if (!doc.exists || doc.data() == null) return [];
@@ -259,15 +259,33 @@ class FirestoreService {
     );
   }
 
-  /// Lấy tất cả tin nhắn ảnh (message_type == 'image') trong một cuộc hội thoại
+  /// Lấy tất cả tin nhắn ảnh (message_type == 'image') trong một cuộc hội thoại.
+  /// Hỗ trợ subcollection `matches/{matchId}/messages` (cấu trúc Module 3 Chat)
+  /// và fallback sang collection `messages` cũ nếu cần.
   Future<List<MessageModel>> getMatchMediaMessages(String matchId) async {
-    final snap = await _messagesCol
-        .where('match_id', isEqualTo: matchId)
+    // 1. Query từ subcollection `matches/{id}/messages` (chuẩn Module 3)
+    final subSnap = await _matchesCol
+        .doc(matchId)
+        .collection('messages')
         .where('message_type', isEqualTo: 'image')
         .get();
-    final list = snap.docs
-        .map((doc) => MessageModel.fromMap(doc.data(), doc.id))
-        .toList();
+
+    List<MessageModel> list = [];
+    if (subSnap.docs.isNotEmpty) {
+      list = subSnap.docs
+          .map((doc) => MessageModel.fromMap(doc.data(), doc.id))
+          .toList();
+    } else {
+      // 2. Fallback sang collection gốc `messages` cũ
+      final snap = await _messagesCol
+          .where('match_id', isEqualTo: matchId)
+          .where('message_type', isEqualTo: 'image')
+          .get();
+      list = snap.docs
+          .map((doc) => MessageModel.fromMap(doc.data(), doc.id))
+          .toList();
+    }
+
     list.sort((a, b) =>
         (b.createdAt ?? DateTime.now()).compareTo(a.createdAt ?? DateTime.now()));
     return list;

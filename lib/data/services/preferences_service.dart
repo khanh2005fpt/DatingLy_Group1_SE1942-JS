@@ -2,12 +2,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 /// Dịch vụ quản lý lưu trữ cấu hình cục bộ bằng SharedPreferences (PRM393 Requirement)
 class PreferencesService {
-  static const String _keyDarkMode = 'cfg_dark_mode';
+  static const String _keyDarkMode = 'dark_mode_theme';
   static const String _keyHasSeenOnboarding = 'cfg_has_seen_onboarding';
   static const String _keyGenderFilter = 'cfg_gender_filter';
-  static const String _keyNotificationsEnabled = 'cfg_notifications_enabled';
+  static const String _keyNotificationsEnabled = 'notification_enabled';
   static const String _keyFcmToken = 'cfg_fcm_token';
-  static const String _keyGhostMode = 'cfg_ghost_mode';
+  static const String _keyGhostMode = 'ghost_mode';
 
   final SharedPreferences _prefs;
 
@@ -20,7 +20,8 @@ class PreferencesService {
   }
 
   // --- Dark Mode ---
-  bool get isDarkMode => _prefs.getBool(_keyDarkMode) ?? false;
+  bool get isDarkMode =>
+      _prefs.getBool(_keyDarkMode) ?? _prefs.getBool('cfg_dark_mode') ?? false;
   Future<bool> setDarkMode(bool value) => _prefs.setBool(_keyDarkMode, value);
 
   // --- Onboarding ---
@@ -39,7 +40,9 @@ class PreferencesService {
 
   // --- Bật/Tắt Thông báo Notification ---
   bool get notificationsEnabled =>
-      _prefs.getBool(_keyNotificationsEnabled) ?? true;
+      _prefs.getBool(_keyNotificationsEnabled) ??
+      _prefs.getBool('cfg_notifications_enabled') ??
+      true;
   Future<bool> setNotificationsEnabled(bool value) =>
       _prefs.setBool(_keyNotificationsEnabled, value);
 
@@ -51,7 +54,10 @@ class PreferencesService {
   }
 
   // --- Ghost Mode (Ẩn danh / Pause account) ---
-  bool get ghostMode => _prefs.getBool(_keyGhostMode) ?? false;
+  bool get ghostMode =>
+      _prefs.getBool(_keyGhostMode) ??
+      _prefs.getBool('cfg_ghost_mode') ??
+      false;
   Future<bool> setGhostMode(bool value) => _prefs.setBool(_keyGhostMode, value);
 
   // --- Clear All (dùng khi Logout) ---
