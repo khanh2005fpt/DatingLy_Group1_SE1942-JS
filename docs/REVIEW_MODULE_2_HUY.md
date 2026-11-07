@@ -1,4 +1,4 @@
-# Review Module 2: Khám phá & Quẹt thẻ (Huy)
+v  # Review Module 2: Khám phá & Quẹt thẻ (Huy)
 
 > Nhánh: `feature/discovery-swipe` · commit `3c30483` (21/10/2026, nqhuyyy11)
 > Cách làm: đọc toàn bộ code thay đổi so với `main` và đối chiếu với file phân công. **Chưa chạy app, chưa chạy test** (máy kiểm tra không cài Flutter).
@@ -6,7 +6,7 @@
 ## 1. Đối chiếu yêu cầu
 
 | Yêu cầu | Trạng thái | Code |
-|---|---|---|
+| --- | --- | --- |
 | Quẹt Like / Pass / Super Like | ✅ | `discovery_screen.dart`: phải = Like, trái = Pass, lên = Super Like, có nút bấm và nhãn LIKE/NOPE/SUPER LIKE |
 | Hiệu ứng xoay góc | ✅ | `AppinioSwiper(maxAngle: 15)` |
 | Lazy-load / pagination | 🟡 | `getDiscoveryPage` có `startAfterDocument` và tự tải trước khi còn ≤ 5 thẻ. **Có lỗi treo loading**, xem mục 2.1 |
@@ -34,11 +34,13 @@
 **File:** `discovery_view_model.dart` (`loadMore`, `reload`) và `discovery_screen.dart` (`_buildBody`).
 
 **Tình huống:** mỗi lần tải, `getDiscoveryPage` đọc tối đa 5 × 30 = 150 user. Nếu cả 150 người đều bị lọc bỏ (đã quẹt hết, filter chặt, khoảng cách xa…), kết quả trả về `users = []` nhưng `hasMore = true`.
+
 - Màn hình thấy `exhausted && hasMore` nên hiện vòng xoay.
 - Nhưng **không còn gì gọi `loadMore()` nữa**, vì `onCardConsumed` chỉ chạy khi quẹt thẻ, mà lúc này không còn thẻ để quẹt.
 - Kết quả: **vòng xoay quay mãi**. Dễ gặp khi một tài khoản đã quẹt nhiều người.
 
 **Cách sửa (chọn 1):**
+
 - Trong `loadMore()`: nếu `fresh.isEmpty && page.hasMore` thì gọi tiếp `loadMore()` (đặt giới hạn số lần).
 - Hoặc trong `_buildBody`: khi `exhausted && state.hasMore && !state.isLoadingMore` thì gọi `loadMore()` bằng `addPostFrameCallback`.
 
@@ -53,6 +55,7 @@ Khi `loadMore` bị lỗi (mất mạng, timeout 20 giây), code đặt `hasMore
 **File:** `firestore_service.dart` (`getDiscoveryPage`).
 
 Hiện tại chỉ lọc khoảng cách khi **cả hai** người đều có vị trí:
+
 - Nếu **mình** từ chối quyền GPS thì bộ lọc khoảng cách bị bỏ qua hoàn toàn, mà màn Filter không báo gì.
 - Người **chưa có** `location` thì luôn lọt qua, dù đặt 1 km.
 
@@ -82,21 +85,27 @@ Badge đặt tên `unreadCount` nhưng thực chất đang đếm **tổng số 
 ## 3. Phần cần thống nhất với thành viên khác
 
 ### 3.1 Prompt: cần Khánh thêm chỗ nhập
+
 `UserModel.prompts` đã có và màn chi tiết đã hiển thị, nhưng **onboarding và edit profile chưa có ô nhập prompt**. User thật sẽ không bao giờ có prompt. Huy và Khánh cần thống nhất: Khánh thêm bước nhập prompt, dùng đúng format `{question, answer}` trong `ProfilePrompt`.
 
 ### 3.2 Màn "Ai đã thích bạn" bị trùng với Dũng
+
 Huy có `who_liked_you_screen.dart` (route `/likes`, **chưa làm mờ ảnh**, `kBlurLikedYou = false`). Dũng có `who_liked_me_screen.dart` làm đầy đủ. Màn này thuộc **module 4 của Dũng**, nên khi merge Huy nên **bỏ màn của mình**, giữ lại icon ♥ trên AppBar trỏ sang màn của Dũng.
 
 ### 3.3 Popup match bị trùng với Đức Anh
+
 `_showMatchDialog` là popup riêng của Huy. Đức Anh đã có `match_celebration_screen.dart` (animation, ảnh hai bên). Khi merge nên thay bằng `showMatchCelebration(...)` của Đức Anh.
 
 ### 3.4 Ghost mode của Sơn
+
 Sơn lưu `ghost_mode: true` vào `users`. Discovery của Huy **chưa bỏ qua những người này**, nên người đang ẩn danh vẫn hiện trong thẻ quẹt. Cần thêm `if (data['ghost_mode'] == true) continue;` trong `getDiscoveryPage`.
 
 ### 3.5 Rewind của Dũng
+
 Khi Dũng hoàn tác (xóa swipe), id người đó vẫn nằm trong `_excluded` của Huy, nên phải đợi lần `reload()` sau mới hiện lại. Cần một hàm ví dụ `DiscoveryViewModel.restore(userId)` để Dũng gọi sau khi rewind.
 
 ### 3.6 Huy sửa file của người khác
+
 Để hỗ trợ dark mode, Huy đã sửa màu trong `login_screen.dart`, `register_screen.dart`, `onboarding_screen.dart`, `edit_profile_screen.dart` (của Khánh) và `chat_screen.dart`, `match_list_screen.dart` (của Đức Anh). Đức Anh đã viết lại gần hết 2 file chat, nên **chắc chắn conflict**. Khi merge nên giữ bản của Đức Anh rồi áp lại phần màu.
 
 ---
@@ -115,8 +124,8 @@ Khi Dũng hoàn tác (xóa swipe), id người đó vẫn nằm trong `_excluded
 - [x] Sửa badge số tin chưa đọc (2.5) — `unreadCountProvider`
 - [x] Reset `_consumed` trong `ref.listen` (2.6)
 - [x] Bỏ qua user `ghost_mode` (3.4)
-- [ ] Bỏ màn Who Liked You của mình, dùng màn của Dũng (3.2) — làm khi merge
-- [ ] Dùng `showMatchCelebration` của Đức Anh (3.3) — làm khi merge
-- [ ] Thống nhất với Khánh về ô nhập prompt (3.1)
+- [ ] Bỏ màn Who Liked You của mình, dùng màn của Dũng (3.2) — chờ `module_4` của Dũng merge vào dev
+- [x] Dùng `showMatchCelebration` của Đức Anh (3.3) — `_showMatchDialog` gọi `showMatchCelebration`
+- [x] Thống nhất với Khánh về ô nhập prompt (3.1) — `ProfilePromptsEditor` trong onboarding và edit profile
 - [x] Thêm hàm để Dũng gọi sau khi rewind (3.5) — `DiscoveryViewModel.restore(userId)`
 - [x] Viết thêm test cho logic lọc — `passesDiscoveryFilter` (9 test)
