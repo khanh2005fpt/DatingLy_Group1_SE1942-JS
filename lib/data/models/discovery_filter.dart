@@ -77,3 +77,4 @@ class DiscoveryFilter {
         Object.hashAll(interests),
       );
 }
+
