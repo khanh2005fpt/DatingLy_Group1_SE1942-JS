@@ -2,6 +2,7 @@ import 'dart:typed_data';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:image_picker/image_picker.dart';
 import '../models/user_model.dart';
+import '../models/report_model.dart';
 import 'data_helper.dart';
 import 'photo_codec.dart';
 
@@ -75,5 +76,50 @@ class UserRepository {
     String extension = 'jpg',
   }) async {
     return PhotoCodec.encode(bytes);
+  }
+
+  // ==================== SAFETY / BLOCK / REPORT ====================
+
+  /// Gửi báo cáo vi phạm vào collection `reports`
+  Future<void> submitReport(ReportModel report) async {
+    await _helper.reportsCol.add(report.toMap());
+  }
+
+  /// Chặn người dùng: thêm targetId vào mảng blocked_users của myId
+  Future<void> blockUser(String myId, String targetId) async {
+    await _helper.usersCol.doc(myId).update({
+      'blocked_users': FieldValue.arrayUnion([targetId]),
+    });
+  }
+
+  /// Bỏ chặn người dùng: xoá targetId khỏi mảng blocked_users của myId
+  Future<void> unblockUser(String myId, String targetId) async {
+    await _helper.usersCol.doc(myId).update({
+      'blocked_users': FieldValue.arrayRemove([targetId]),
+    });
+  }
+
+  /// Lấy danh sách user bị chặn của myId (trả về `List<UserModel>`)
+  Future<List<UserModel>> getBlockedUsers(String myId) async {
+    final doc = await _helper.usersCol.doc(myId).get();
+    if (!doc.exists || doc.data() == null) return [];
+    final myProfile = UserModel.fromFirestore(doc);
+    final blockedIds = myProfile.blockedUsers;
+    if (blockedIds.isEmpty) return [];
+
+    final List<UserModel> blockedList = [];
+    for (final id in blockedIds) {
+      final user = await getUserProfile(id);
+      if (user != null) blockedList.add(user);
+    }
+    return blockedList;
+  }
+
+  /// Cập nhật trạng thái Ghost Mode trên Firestore
+  Future<void> updateGhostMode(String userId, bool isGhost) async {
+    await _helper.usersCol.doc(userId).set(
+      {'ghost_mode': isGhost},
+      SetOptions(merge: true),
+    );
   }
 }

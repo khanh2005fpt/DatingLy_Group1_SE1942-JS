@@ -1,16 +1,19 @@
-﻿import 'package:shared_preferences/shared_preferences.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/discovery_filter.dart';
 import '../models/user_model.dart';
 
 /// SettingRepository: Quản lý cấu hình cục bộ và SharedPreferences (PRM393 MVVM Pattern)
 class SettingRepository {
   static const String _keyDarkMode = 'cfg_dark_mode';
+  static const String _keyDarkModeTheme = 'dark_mode_theme';
   static const String _keyHasSeenOnboarding = 'cfg_has_seen_onboarding';
   static const String _keyIsFirstTimeUser = 'cfg_is_first_time_user';
   static const String _keyOnboardingCompleted = 'cfg_onboarding_completed';
   static const String _keyCachedUserProfile = 'cfg_cached_user_profile';
   static const String _keyGenderFilter = 'cfg_gender_filter';
   static const String _keyNotificationsEnabled = 'cfg_notifications_enabled';
+  static const String _keyNotificationEnabled = 'notification_enabled';
+  static const String _keyGhostMode = 'ghost_mode';
   static const String _keyFcmToken = 'cfg_fcm_token';
   static const String _keyMinAge = 'min_age';
   static const String _keyMaxAge = 'max_age';
@@ -68,8 +71,18 @@ class SettingRepository {
   }
 
   // --- Dark Mode ---
-  bool get isDarkMode => _prefs.getBool(_keyDarkMode) ?? false;
-  Future<bool> setDarkMode(bool value) => _prefs.setBool(_keyDarkMode, value);
+  bool get isDarkMode =>
+      _prefs.getBool(_keyDarkModeTheme) ??
+      _prefs.getBool(_keyDarkMode) ??
+      false;
+  Future<bool> setDarkMode(bool value) async {
+    await _prefs.setBool(_keyDarkMode, value);
+    return _prefs.setBool(_keyDarkModeTheme, value);
+  }
+
+  // --- Ghost Mode ---
+  bool get ghostMode => _prefs.getBool(_keyGhostMode) ?? false;
+  Future<bool> setGhostMode(bool value) => _prefs.setBool(_keyGhostMode, value);
 
   // --- Legacy Alias ---
   bool get hasSeenOnboarding => onboardingCompleted;
@@ -86,9 +99,16 @@ class SettingRepository {
 
   // --- Bật/Tắt Thông báo Notification ---
   bool get notificationsEnabled =>
-      _prefs.getBool(_keyNotificationsEnabled) ?? true;
-  Future<bool> setNotificationsEnabled(bool value) =>
-      _prefs.setBool(_keyNotificationsEnabled, value);
+      _prefs.getBool(_keyNotificationEnabled) ??
+      _prefs.getBool(_keyNotificationsEnabled) ??
+      true;
+  Future<bool> setNotificationsEnabled(bool value) async {
+    await _prefs.setBool(_keyNotificationsEnabled, value);
+    return _prefs.setBool(_keyNotificationEnabled, value);
+  }
+
+  // --- Xoá toàn bộ cache cục bộ SharedPreferences ---
+  Future<bool> clearAll() => _prefs.clear();
 
   // --- Bộ lọc Discovery ---
   DiscoveryFilter loadDiscoveryFilter() {

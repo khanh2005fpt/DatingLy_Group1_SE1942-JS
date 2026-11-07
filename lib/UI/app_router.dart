@@ -13,6 +13,9 @@ import 'Views/Screen/chat_screen.dart';
 import 'Views/Screen/mini_game_screen.dart';
 import 'Views/Screen/profile_screen.dart';
 import 'Views/Screen/edit_profile_screen.dart';
+import 'Views/Screen/account_settings_screen.dart';
+import 'Views/Screen/safety_screen.dart';
+import 'Views/Screen/media_gallery_screen.dart';
 
 class AppRouter {
   static final router = GoRouter(
@@ -108,6 +111,33 @@ class AppRouter {
         builder: (context, state) {
           final profile = state.extra as Map<String, dynamic>?;
           return EditProfileScreen(initialProfile: profile);
+        },
+      ),
+      // ─── Module 5: Settings ──────────────────────────────────────────────
+      GoRoute(
+        path: '/settings',
+        builder: (context, state) => const AccountSettingsScreen(),
+      ),
+      GoRoute(
+        path: '/settings/safety',
+        builder: (context, state) => const SafetyScreen(),
+      ),
+      GoRoute(
+        path: '/settings/safety/report/:userId',
+        builder: (context, state) {
+          final userId = state.pathParameters['userId'];
+          return SafetyScreen(prefilledUserId: userId);
+        },
+      ),
+      GoRoute(
+        path: '/settings/media-gallery/:matchId',
+        builder: (context, state) {
+          final matchId = state.pathParameters['matchId']!;
+          final extra = state.extra as Map<String, dynamic>?;
+          return MediaGalleryScreen(
+            matchId: matchId,
+            otherUserName: extra?['otherUserName'] as String?,
+          );
         },
       ),
     ],

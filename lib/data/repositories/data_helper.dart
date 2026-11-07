@@ -24,5 +24,8 @@ class DataHelper {
 
   CollectionReference<Map<String, dynamic>> get messagesCol =>
       firestore.collection('messages');
+
+  CollectionReference<Map<String, dynamic>> get reportsCol =>
+      firestore.collection('reports');
 }
 

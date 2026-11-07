@@ -168,6 +168,36 @@ class ChatRepository {
     await batch.commit();
   }
 
+  /// Lấy tất cả tin nhắn ảnh trong một cuộc hội thoại
+  Future<List<MessageModel>> getMatchMediaMessages(String matchId) async {
+    // 1. Query từ subcollection matches/{matchId}/messages (chuẩn Module 3)
+    final subSnap = await _helper.matchesCol
+        .doc(matchId)
+        .collection('messages')
+        .where('message_type', isEqualTo: 'image')
+        .get();
+
+    List<MessageModel> list = [];
+    if (subSnap.docs.isNotEmpty) {
+      list = subSnap.docs
+          .map((doc) => MessageModel.fromMap(doc.data(), doc.id))
+          .toList();
+    } else {
+      // 2. Fallback sang collection messages gốc
+      final snap = await _helper.messagesCol
+          .where('match_id', isEqualTo: matchId)
+          .where('message_type', isEqualTo: 'image')
+          .get();
+      list = snap.docs
+          .map((doc) => MessageModel.fromMap(doc.data(), doc.id))
+          .toList();
+    }
+
+    list.sort((a, b) =>
+        (b.createdAt ?? DateTime.now()).compareTo(a.createdAt ?? DateTime.now()));
+    return list;
+  }
+
   // ==================== SQLITE LOCAL CACHE ====================
 
   /// Lấy danh sách tin nhắn từ bộ nhớ cục bộ SQLite

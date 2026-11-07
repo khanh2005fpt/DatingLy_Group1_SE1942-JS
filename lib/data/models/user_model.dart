@@ -35,6 +35,8 @@ class UserModel {
   final List<String> avatarUrls;
   final bool onboardingCompleted;
   final String? fcmToken;
+  final bool ghostMode;
+  final List<String> blockedUsers;
   final GeoPoint? location;
   final List<ProfilePrompt> prompts;
   final DateTime? createdAt;
@@ -55,6 +57,8 @@ class UserModel {
     this.avatarUrls = const [],
     this.onboardingCompleted = false,
     this.fcmToken,
+    this.ghostMode = false,
+    this.blockedUsers = const [],
     this.location,
     this.prompts = const [],
     this.createdAt,
@@ -78,6 +82,8 @@ class UserModel {
     List<String>? avatarUrls,
     bool? onboardingCompleted,
     String? fcmToken,
+    bool? ghostMode,
+    List<String>? blockedUsers,
     GeoPoint? location,
     List<ProfilePrompt>? prompts,
     DateTime? createdAt,
@@ -98,6 +104,8 @@ class UserModel {
       avatarUrls: avatarUrls ?? this.avatarUrls,
       onboardingCompleted: onboardingCompleted ?? this.onboardingCompleted,
       fcmToken: fcmToken ?? this.fcmToken,
+      ghostMode: ghostMode ?? this.ghostMode,
+      blockedUsers: blockedUsers ?? this.blockedUsers,
       location: location ?? this.location,
       prompts: prompts ?? this.prompts,
       createdAt: createdAt ?? this.createdAt,
@@ -121,6 +129,8 @@ class UserModel {
       'avatar_urls': avatarUrls,
       'onboarding_completed': onboardingCompleted,
       if (fcmToken != null) 'fcm_token': fcmToken,
+      'ghost_mode': ghostMode,
+      'blocked_users': blockedUsers,
       if (location != null) 'location': location,
       // Luôn ghi (kể cả rỗng) để xóa hết prompt thì Firestore merge cũng cập nhật.
       'prompts': prompts.map((p) => p.toMap()).toList(),
@@ -167,6 +177,8 @@ class UserModel {
           [],
       onboardingCompleted: hasCompleted,
       fcmToken: map['fcm_token'] as String?,
+      ghostMode: map['ghost_mode'] as bool? ?? false,
+      blockedUsers: (map['blocked_users'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
       location: map['location'] is GeoPoint
           ? map['location'] as GeoPoint
           : null,
@@ -202,6 +214,8 @@ class UserModel {
       'avatar_urls': avatarUrls,
       'onboarding_completed': onboardingCompleted,
       'fcm_token': fcmToken,
+      'ghost_mode': ghostMode,
+      'blocked_users': blockedUsers,
       if (location != null)
         'location': {
           'latitude': location!.latitude,
@@ -245,6 +259,8 @@ class UserModel {
       avatarUrls: (json['avatar_urls'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
       onboardingCompleted: json['onboarding_completed'] as bool? ?? false,
       fcmToken: json['fcm_token'] as String?,
+      ghostMode: json['ghost_mode'] as bool? ?? false,
+      blockedUsers: (json['blocked_users'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
       location: parseGeo(json['location']),
       prompts: (json['prompts'] as List<dynamic>?)
               ?.map(ProfilePrompt.tryParse)
