@@ -138,54 +138,6 @@ final class AuthRepositoryProvider
 
 String _$authRepositoryHash() => r'b1845c21e89227820af003689c9437f06a070ee3';
 
-@ProviderFor(phoneAuthRepository)
-final phoneAuthRepositoryProvider = PhoneAuthRepositoryProvider._();
-
-final class PhoneAuthRepositoryProvider
-    extends
-        $FunctionalProvider<
-          PhoneAuthRepository,
-          PhoneAuthRepository,
-          PhoneAuthRepository
-        >
-    with $Provider<PhoneAuthRepository> {
-  PhoneAuthRepositoryProvider._()
-    : super(
-        from: null,
-        argument: null,
-        retry: null,
-        name: r'phoneAuthRepositoryProvider',
-        isAutoDispose: false,
-        dependencies: null,
-        $allTransitiveDependencies: null,
-      );
-
-  @override
-  String debugGetCreateSourceHash() => _$phoneAuthRepositoryHash();
-
-  @$internal
-  @override
-  $ProviderElement<PhoneAuthRepository> $createElement(
-    $ProviderPointer pointer,
-  ) => $ProviderElement(pointer);
-
-  @override
-  PhoneAuthRepository create(Ref ref) {
-    return phoneAuthRepository(ref);
-  }
-
-  /// {@macro riverpod.override_with_value}
-  Override overrideWithValue(PhoneAuthRepository value) {
-    return $ProviderOverride(
-      origin: this,
-      providerOverride: $SyncValueProvider<PhoneAuthRepository>(value),
-    );
-  }
-}
-
-String _$phoneAuthRepositoryHash() =>
-    r'26e2e5aafc5e712323a45e2f2ff9a2b1dae4f73d';
-
 @ProviderFor(userRepository)
 final userRepositoryProvider = UserRepositoryProvider._();
 
