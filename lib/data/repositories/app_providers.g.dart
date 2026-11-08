@@ -405,47 +405,6 @@ final class AiRepositoryProvider
 
 String _$aiRepositoryHash() => r'8c43d7fd3350073bdea629e3ca4574372c2595a2';
 
-@ProviderFor(seedRepository)
-final seedRepositoryProvider = SeedRepositoryProvider._();
-
-final class SeedRepositoryProvider
-    extends $FunctionalProvider<SeedRepository, SeedRepository, SeedRepository>
-    with $Provider<SeedRepository> {
-  SeedRepositoryProvider._()
-    : super(
-        from: null,
-        argument: null,
-        retry: null,
-        name: r'seedRepositoryProvider',
-        isAutoDispose: false,
-        dependencies: null,
-        $allTransitiveDependencies: null,
-      );
-
-  @override
-  String debugGetCreateSourceHash() => _$seedRepositoryHash();
-
-  @$internal
-  @override
-  $ProviderElement<SeedRepository> $createElement($ProviderPointer pointer) =>
-      $ProviderElement(pointer);
-
-  @override
-  SeedRepository create(Ref ref) {
-    return seedRepository(ref);
-  }
-
-  /// {@macro riverpod.override_with_value}
-  Override overrideWithValue(SeedRepository value) {
-    return $ProviderOverride(
-      origin: this,
-      providerOverride: $SyncValueProvider<SeedRepository>(value),
-    );
-  }
-}
-
-String _$seedRepositoryHash() => r'fdc1d814f8ca2982ee101740f4fc7d95c1e5e396';
-
 @ProviderFor(authStateChanges)
 final authStateChangesProvider = AuthStateChangesProvider._();
 

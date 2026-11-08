@@ -9,7 +9,6 @@ import 'chat_repository.dart';
 import 'notification_repository.dart';
 import 'location_repository.dart';
 import 'ai_repository.dart';
-import 'seed_repository.dart';
 
 part 'app_providers.g.dart';
 
@@ -45,9 +44,6 @@ LocationRepository locationRepository(Ref ref) => LocationRepository();
 
 @Riverpod(keepAlive: true)
 AiRepository aiRepository(Ref ref) => AiRepository();
-
-@Riverpod(keepAlive: true)
-SeedRepository seedRepository(Ref ref) => SeedRepository();
 
 @Riverpod(keepAlive: true)
 Stream<User?> authStateChanges(Ref ref) {

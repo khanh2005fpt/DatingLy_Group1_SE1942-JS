@@ -113,7 +113,6 @@ Khi Dũng hoàn tác (xóa swipe), id người đó vẫn nằm trong `_excluded
 ## 4. Việc nên làm thêm (không bắt buộc)
 
 - Viết test cho phần lọc trong `getDiscoveryPage` (tuổi, giới tính, block, khoảng cách, sở thích). Có thể tách phần lọc thành hàm thuần để test không cần Firestore.
-- Nút "Tạo 30 user giả" chỉ hiện ở bản debug (`kDebugMode`), vậy là ổn. Cần nhớ xóa dữ liệu `seed_*` trên Firestore trước khi nộp bài.
 
 ## 5. Checklist cho Huy
 
@@ -129,3 +128,48 @@ Khi Dũng hoàn tác (xóa swipe), id người đó vẫn nằm trong `_excluded
 - [x] Thống nhất với Khánh về ô nhập prompt (3.1) — `ProfilePromptsEditor` trong onboarding và edit profile
 - [x] Thêm hàm để Dũng gọi sau khi rewind (3.5) — `DiscoveryViewModel.restore(userId)`
 - [x] Viết thêm test cho logic lọc — `passesDiscoveryFilter` (9 test)
+
+---
+
+## 6. Giải thích các khái niệm trong review
+
+### 6.1 Phần yêu cầu
+
+- **AppinioSwiper (`maxAngle: 15`)**: package tạo chồng thẻ quẹt kiểu Tinder. `maxAngle` là góc nghiêng tối đa khi kéo thẻ (15°). Package lo phần hiệu ứng và báo hướng quẹt (trái / phải / lên).
+- **Lazy-load / pagination**: không tải hết user một lần mà tải từng "trang", gần hết thẻ mới tải tiếp.
+  - `startAfterDocument(lastDoc)`: Firestore lấy tiếp từ sau document cuối của trang trước, không bị trùng.
+  - "Còn ≤ 5 thẻ thì tải trước" là **prefetch**, để người dùng quẹt không bị khựng.
+  - `hasMore`: cờ báo trên server còn dữ liệu hay không.
+- **Geolocator + Haversine**: `geolocator` lấy tọa độ GPS của máy. **Haversine** là công thức tính khoảng cách (km) giữa hai tọa độ trên mặt cầu Trái Đất (`haversineKm` trong `geo_utils.dart`). Dùng để hiện "Cách bạn X km" và để lọc theo slider khoảng cách.
+- **Lọc trên Firestore và lọc ở client**:
+  - Tuổi (`where age` + `orderBy age`) lọc **trên server**, nên Firestore chỉ trả về người đúng tuổi, đỡ tốn lượt đọc.
+  - Giới tính, khoảng cách, sở thích, block, ghost mode lọc **trên máy** sau khi tải về, vì Firestore không cho nhiều điều kiện range trên nhiều field và không tự tính được khoảng cách. Tất cả nằm trong `passesDiscoveryFilter` (`discovery_repository.dart`).
+- **Prompt (`ProfilePrompt {question, answer}`)**: câu hỏi gợi chuyện trên hồ sơ, giống Hinge. Ví dụ: "Cuối tuần lý tưởng của tôi là…" → "…đi phượt Đà Lạt". Làm hồ sơ có cá tính hơn chỉ ảnh + bio.
+- **Loại trừ người đã quẹt / đã block**: `getExcludedUserIds` gom ID những người mình đã quẹt và những người có quan hệ block, để họ không hiện lại. "Cả hai chiều": mình block họ **hoặc** họ block mình thì đều không thấy nhau.
+- **Collection `swipes`, doc id cố định**: mỗi lần quẹt ghi doc id `swiperId_swipedId`. Quẹt lại cùng người thì chỉ ghi đè, không tạo bản ghi mới. Match id cũng cố định (ghép 2 id theo thứ tự), nên hai người Like nhau gần như cùng lúc vẫn chỉ tạo **một** match.
+- **SharedPreferences**: kho key-value nhỏ lưu trên máy. Dùng để nhớ filter (`min_age`, `max_age`, `max_distance`, `interested_in`…), tắt app mở lại vẫn giữ. Không lên server, mỗi máy một bản.
+- **Unit test**: code tự kiểm tra hàm thuần (không cần UI, Firestore), ví dụ haversine tính đúng không, filter loại đúng người không. Chạy bằng `flutter test`.
+
+### 6.2 Phần lỗi
+
+- **Treo loading (2.1)**: state không tự thoát ra được. Màn hình ở trạng thái "chờ tải" (`exhausted && hasMore`), nhưng thứ duy nhất kích hoạt tải là quẹt thẻ, mà lúc đó không còn thẻ.
+  - Cách 1: `loadMore()` tự gọi lại nếu trang vừa tải bị lọc sạch (có giới hạn số lần để không lặp vô hạn).
+  - Cách 2: `addPostFrameCallback` hẹn chạy code **ngay sau khi frame hiện tại vẽ xong**. Không được đổi state ngay trong `build()` (Flutter báo lỗi), nên phải hẹn sang sau frame.
+- **`errorMessage` và `hasMore: false` (2.2)**: "hết dữ liệu" khác "tải lỗi". Lẫn hai cái thì người mất mạng tưởng hết người để quẹt. Có `errorMessage` thì màn hình mới hiện được nút "Thử lại".
+- **Lọc khoảng cách không chặt (2.3)**: trường hợp thiếu dữ liệu (mình không có GPS, hoặc người kia không có `location`). Code cũ bỏ qua bộ lọc nên đặt 1 km vẫn thấy người ở xa. Đã sửa: người không có vị trí bị ẩn.
+- **Badge (2.5)**: số đỏ nhỏ trên icon chat. Code cũ đếm **số match** thay vì **số tin chưa đọc**. `unreadCountProvider` giờ cộng `unreadCount` của từng match.
+- **`ref.listen` và gán biến trong `build` (2.6)**:
+  - `build()` có thể bị Flutter gọi rất nhiều lần bất cứ lúc nào, nên trong đó chỉ nên **vẽ UI**, không đổi biến (side effect).
+  - `ref.listen(provider, (prev, next) {...})` của Riverpod chỉ chạy callback **khi giá trị thay đổi**. Đây là chỗ đúng để reset `_consumed`.
+- **Riverpod / Provider / ViewModel (nền tảng)**:
+  - **ViewModel** (`DiscoveryViewModel`) giữ state của màn hình (danh sách thẻ, đang tải, lỗi…) và logic. UI chỉ đọc state rồi vẽ.
+  - **Provider** là cách Riverpod đưa ViewModel / dữ liệu tới widget. `ref.watch` theo dõi và vẽ lại khi đổi; `ref.read` đọc một lần (dùng khi bấm nút).
+  - File `.g.dart` là code **tự sinh** bởi `build_runner` từ annotation `@riverpod`. Không sửa tay.
+
+### 6.3 Phần liên quan thành viên khác
+
+- **Ghost mode (Sơn)**: chế độ ẩn danh, bật lên thì không xuất hiện trong Discovery của ai. Cờ `ghost_mode: true` trong doc `users`, đã lọc trong `passesDiscoveryFilter`.
+- **Rewind (Dũng)**: hoàn tác lần quẹt vừa rồi (xóa doc swipe). ViewModel của Huy cache `_excluded` trong bộ nhớ, nên cần `DiscoveryViewModel.restore(userId)` để bỏ ID đó khỏi danh sách loại trừ và đưa thẻ trở lại ngay.
+- **Who Liked You và blur (Dũng)**: màn liệt kê người đã Like mình. Làm mờ ảnh là tính năng premium kiểu Tinder (trả phí mới xem mặt). `kBlurLikedYou` là công tắc bật/tắt mờ trong bản của Huy. Màn này trùng với Dũng nên sẽ bỏ khi merge.
+- **Match celebration (Đức Anh)**: popup "It's a Match!" có animation. `showMatchCelebration` là hàm dùng chung, Discovery giờ gọi hàm này thay cho popup riêng.
+- **Merge conflict (3.6)**: hai người cùng sửa một đoạn trong cùng file thì git không tự chọn được, bắt mình quyết. Nên giữ bản của Đức Anh rồi áp lại phần màu dark mode.

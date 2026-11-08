@@ -111,7 +111,6 @@ lib/
 │       ├── geo_utils.dart                  # Hàm tính cự ly khoảng cách Haversine (km)
 │       ├── location_repository.dart        # Quản lý quyền và lấy toạ độ GPS (Geolocator)
 │       ├── notification_repository.dart    # Cấu hình FCM Token, Local Notifications & background
-│       ├── seed_repository.dart            # Tạo/xóa 30 hồ sơ mock dữ liệu phục vụ test
 │       ├── setting_repository.dart         # Quản lý SharedPreferences (Cấu hình, Ghost Mode, Dark Mode & Cache user)
 │       └── user_repository.dart            # CRUD hồ sơ người dùng, block/unblock, report và upload ảnh
 │

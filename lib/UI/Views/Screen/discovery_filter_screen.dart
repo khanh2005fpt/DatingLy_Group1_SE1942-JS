@@ -1,13 +1,9 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../../data/repositories/app_providers.dart';
 import '../../app_colors.dart';
-import '../../../data/repositories/seed_repository.dart';
 import '../../../data/models/discovery_filter.dart';
 import '../../ViewModels/discovery_view_model.dart';
-import 'who_liked_you_screen.dart';
 
 /// Danh sách sở thích để chọn trong bộ lọc.
 const List<String> kFilterInterestOptions = [
@@ -47,33 +43,6 @@ class _DiscoveryFilterScreenState extends ConsumerState<DiscoveryFilterScreen> {
     super.initState();
     // Bản nháp: chỉ ghi SharedPreferences khi bấm "Áp dụng"
     _draft = ref.read(discoveryFilterProvider);
-  }
-
-  bool _seeding = false;
-
-  Future<void> _runSeed({required bool clear}) async {
-    final myId = ref.read(authRepositoryProvider).currentUser?.uid;
-    if (myId == null) return;
-    setState(() => _seeding = true);
-    String msg;
-    try {
-      final seed = SeedRepository();
-      if (clear) {
-        await seed.clear(myId: myId);
-        msg = 'Đã xoá user giả';
-      } else {
-        final loc = ref.read(discoveryViewModelProvider).myLocation;
-        await seed.seed(myId: myId, center: loc);
-        msg = 'Đã tạo ${SeedRepository.count} user giả (5 người đã Like bạn)';
-      }
-      await ref.read(discoveryViewModelProvider.notifier).reload();
-      ref.invalidate(whoLikedMeProvider);
-    } catch (e) {
-      msg = 'Lỗi (có thể do Firestore rules): $e';
-    }
-    if (!mounted) return;
-    setState(() => _seeding = false);
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 
   String _genderLabel(String v) => v == DiscoveryFilter.anyGender ? 'Tất cả' : v;
@@ -216,38 +185,6 @@ class _DiscoveryFilterScreenState extends ConsumerState<DiscoveryFilterScreen> {
               child: const Text('Áp dụng'),
             ),
           ),
-          if (kDebugMode) ...[
-            const SizedBox(height: 32),
-            const Divider(),
-            const Text('Dữ liệu test (chỉ debug)',
-                style: TextStyle(fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    style: OutlinedButton.styleFrom(
-                      minimumSize: const Size.fromHeight(48),
-                      foregroundColor: AppColors.primary,
-                    ),
-                    onPressed: _seeding ? null : () => _runSeed(clear: false),
-                    child: const Text('Tạo 30 user giả'),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: OutlinedButton(
-                    style: OutlinedButton.styleFrom(
-                      minimumSize: const Size.fromHeight(48),
-                      foregroundColor: Colors.redAccent,
-                    ),
-                    onPressed: _seeding ? null : () => _runSeed(clear: true),
-                    child: const Text('Xoá user giả'),
-                  ),
-                ),
-              ],
-            ),
-          ],
         ],
       ),
     );
