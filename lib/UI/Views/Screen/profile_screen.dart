@@ -7,7 +7,6 @@ import '../../ViewModels/auth_view_model.dart';
 import '../../ViewModels/profile_view_model.dart';
 import '../../ViewModels/preferences_view_model.dart';
 import '../Widget/app_image.dart';
-import '../../../data/local/database_helper.dart';
 import '../../ViewModels/notification_view_model.dart';
 import '../../ViewModels/who_liked_me_view_model.dart';
 
@@ -40,8 +39,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       ),
     );
     if (confirm == true) {
-      // Xóa toàn bộ cache SQLite khi đăng xuất
-      await DatabaseHelper.instance.clearAllCache();
       await ref.read(authViewModelProvider.notifier).signOut();
       if (mounted) context.go('/login');
     }

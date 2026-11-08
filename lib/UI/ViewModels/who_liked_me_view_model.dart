@@ -1,9 +1,11 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../data/repositories/app_providers.dart';
 import '../../data/models/swipe_history_model.dart';
 import '../../data/models/user_model.dart';
 import '../../data/models/who_liked_user_item.dart';
 import '../../data/repositories/activity_repository.dart';
+
+part 'who_liked_me_view_model.g.dart';
 
 class WhoLikedMeState {
   final List<WhoLikedUserItem> items;
@@ -33,7 +35,8 @@ class WhoLikedMeState {
   }
 }
 
-class WhoLikedMeViewModel extends Notifier<WhoLikedMeState> {
+@Riverpod(keepAlive: true)
+class WhoLikedMeViewModel extends _$WhoLikedMeViewModel {
   ActivityRepository get _repository => ref.read(activityRepositoryProvider);
 
   @override
@@ -161,24 +164,19 @@ class WhoLikedMeViewModel extends Notifier<WhoLikedMeState> {
   }
 }
 
-final whoLikedMeViewModelProvider =
-    NotifierProvider<WhoLikedMeViewModel, WhoLikedMeState>(
-  WhoLikedMeViewModel.new,
-);
+/// Số người chưa match đã like mình (badge).
+@Riverpod(keepAlive: true)
+int whoLikedMeCount(Ref ref) => ref
+    .watch(whoLikedMeViewModelProvider)
+    .items
+    .where((i) => !i.isMatched)
+    .length;
 
-/// Provider đếm số người chưa match đã like mình
-final whoLikedMeCountProvider = Provider<int>((ref) {
-  final state = ref.watch(whoLikedMeViewModelProvider);
-  return state.items.where((i) => !i.isMatched).length;
-});
-
-/// Provider tập hợp các ID người dùng đã like mình (chưa match).
-/// Module Discovery (Huy) có thể dùng trực tiếp để hiển thị huy hiệu "Đã thích bạn"
-/// trên thẻ quẹt một cách mượt mà không cần truy vấn Firestore lặp lại.
-final whoLikedMeUserIdsProvider = Provider<Set<String>>((ref) {
-  final state = ref.watch(whoLikedMeViewModelProvider);
-  return state.items
-      .where((i) => !i.isMatched)
-      .map((i) => i.user.id)
-      .toSet();
-});
+/// ID những người đã like mình (chưa match), dùng cho huy hiệu "Đã thích bạn".
+@Riverpod(keepAlive: true)
+Set<String> whoLikedMeUserIds(Ref ref) => ref
+    .watch(whoLikedMeViewModelProvider)
+    .items
+    .where((i) => !i.isMatched)
+    .map((i) => i.user.id)
+    .toSet();

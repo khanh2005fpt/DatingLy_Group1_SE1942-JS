@@ -210,6 +210,8 @@ class AuthViewModel extends _$AuthViewModel {
   }
 
   Future<void> signOut() async {
+    // Cache SQLite của module 4 là theo tài khoản: xoá để người sau không thấy
+    await ref.read(activityRepositoryProvider).clearAllCache();
     await _authRepo.signOut();
     await _settingRepo.clearCachedUserProfile();
     // Cờ onboarding là theo từng tài khoản: reset để người dùng kế tiếp trên máy này không bị bỏ qua onboarding

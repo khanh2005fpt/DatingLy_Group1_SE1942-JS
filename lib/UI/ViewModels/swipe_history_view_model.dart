@@ -1,7 +1,9 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../data/repositories/app_providers.dart';
 import '../../data/models/swipe_history_model.dart';
 import '../../data/repositories/activity_repository.dart';
+
+part 'swipe_history_view_model.g.dart';
 
 class SwipeHistoryState {
   final List<SwipeHistoryModel> history;
@@ -39,7 +41,8 @@ class SwipeHistoryState {
   }
 }
 
-class SwipeHistoryViewModel extends Notifier<SwipeHistoryState> {
+@Riverpod(keepAlive: true)
+class SwipeHistoryViewModel extends _$SwipeHistoryViewModel {
   ActivityRepository get _repository => ref.read(activityRepositoryProvider);
 
   @override
@@ -155,8 +158,3 @@ class SwipeHistoryViewModel extends Notifier<SwipeHistoryState> {
     await loadHistory();
   }
 }
-
-final swipeHistoryViewModelProvider =
-    NotifierProvider<SwipeHistoryViewModel, SwipeHistoryState>(
-  SwipeHistoryViewModel.new,
-);

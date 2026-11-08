@@ -1,7 +1,9 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../data/models/notification_item_model.dart';
 import '../../data/repositories/app_providers.dart';
 import '../../data/repositories/activity_repository.dart';
+
+part 'notification_view_model.g.dart';
 
 class NotificationState {
   final List<NotificationItemModel> notifications;
@@ -31,7 +33,8 @@ class NotificationState {
   }
 }
 
-class NotificationViewModel extends Notifier<NotificationState> {
+@Riverpod(keepAlive: true)
+class NotificationViewModel extends _$NotificationViewModel {
   ActivityRepository get _repository => ref.read(activityRepositoryProvider);
 
   @override
@@ -118,12 +121,7 @@ class NotificationViewModel extends Notifier<NotificationState> {
   }
 }
 
-final notificationViewModelProvider =
-    NotifierProvider<NotificationViewModel, NotificationState>(
-  NotificationViewModel.new,
-);
-
-/// Provider đếm số thông báo chưa đọc cho badge trên App Bar
-final unreadNotificationCountProvider = Provider<int>((ref) {
-  return ref.watch(notificationViewModelProvider).unreadCount;
-});
+/// Số thông báo chưa đọc cho badge trên App Bar.
+@Riverpod(keepAlive: true)
+int unreadNotificationCount(Ref ref) =>
+    ref.watch(notificationViewModelProvider).unreadCount;

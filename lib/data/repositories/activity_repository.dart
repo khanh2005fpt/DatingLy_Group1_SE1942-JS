@@ -105,4 +105,7 @@ class ActivityRepository {
       _dbHelper.deleteSwipeByTargetUserId(targetUserId);
 
   Future<void> clearAllSwipeHistory() => _dbHelper.clearAllSwipeHistory();
+
+  /// Xoá toàn bộ cache SQLite (thông báo + lịch sử quẹt), gọi khi đăng xuất.
+  Future<void> clearAllCache() => _dbHelper.clearAllCache();
 }
