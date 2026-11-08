@@ -2,23 +2,23 @@ import '../local/database_helper.dart';
 import '../models/notification_item_model.dart';
 import '../models/swipe_history_model.dart';
 import '../models/who_liked_user_item.dart';
-import '../services/firestore_service.dart';
-import '../services/notification_service.dart';
+import 'discovery_repository.dart';
+import 'notification_repository.dart';
 
 /// Repository cho Module 4 - Activity (Notifications, Who Liked Me, Swipe History)
 /// Đóng vai trò trung gian giữa ViewModel và các data sources (SQLite, Firestore, FCM)
 class ActivityRepository {
   final DatabaseHelper _dbHelper;
-  final FirestoreService _firestoreService;
-  final NotificationService _notificationService;
+  final DiscoveryRepository _discoveryRepository;
+  final NotificationRepository _notificationRepository;
 
   ActivityRepository({
     required DatabaseHelper dbHelper,
-    required FirestoreService firestoreService,
-    required NotificationService notificationService,
+    required DiscoveryRepository discoveryRepository,
+    required NotificationRepository notificationRepository,
   })  : _dbHelper = dbHelper,
-        _firestoreService = firestoreService,
-        _notificationService = notificationService;
+        _discoveryRepository = discoveryRepository,
+        _notificationRepository = notificationRepository;
 
   // ==========================================
   // NOTIFICATIONS
@@ -50,7 +50,7 @@ class ActivityRepository {
     required String body,
     String? payload,
   }) =>
-      _notificationService.showNotification(
+      _notificationRepository.showNotification(
         title: title,
         body: body,
         payload: payload,
@@ -61,10 +61,10 @@ class ActivityRepository {
   // ==========================================
 
   Future<List<WhoLikedUserItem>> getWhoLikedMe(String myId) =>
-      _firestoreService.getWhoLikedMe(myId);
+      _discoveryRepository.getWhoLikedMe(myId);
 
   Stream<List<WhoLikedUserItem>> streamWhoLikedMe(String myId) =>
-      _firestoreService.streamWhoLikedMe(myId);
+      _discoveryRepository.streamWhoLikedMe(myId);
 
   Future<String?> recordSwipe({
     required String myId,
@@ -72,11 +72,10 @@ class ActivityRepository {
     required bool isLike,
     bool isSuperLike = false,
   }) =>
-      _firestoreService.recordSwipe(
+      _discoveryRepository.recordSwipe(
         myId: myId,
         targetUserId: targetUserId,
-        isLike: isLike,
-        isSuperLike: isSuperLike,
+        action: isSuperLike ? 'super_like' : (isLike ? 'like' : 'nope'),
       );
 
   // ==========================================
@@ -98,7 +97,7 @@ class ActivityRepository {
     required String myId,
     required String targetUserId,
   }) =>
-      _firestoreService.undoSwipe(myId: myId, targetUserId: targetUserId);
+      _discoveryRepository.undoSwipe(myId: myId, targetUserId: targetUserId);
 
   Future<void> deleteSwipe(int id) => _dbHelper.deleteSwipe(id);
 

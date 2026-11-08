@@ -4,19 +4,19 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_core/firebase_core.dart';
 
 import 'firebase_options.dart';
-import 'core/providers/app_providers.dart';
-import 'core/providers/notification_bootstrap.dart';
-import 'core/theme/app_theme.dart';
-import 'core/routes/app_router.dart';
-import 'core/widgets/app_branding.dart';
-import 'data/services/preferences_service.dart';
-import 'data/services/notification_service.dart';
-import 'features/profile/presentation/viewmodels/preferences_view_model.dart';
+import 'data/repositories/app_providers.dart';
+import 'data/repositories/notification_repository.dart';
+import 'data/repositories/setting_repository.dart';
+import 'UI/ViewModels/notification_bootstrap.dart';
+import 'UI/ViewModels/preferences_view_model.dart';
+import 'UI/app_theme.dart';
+import 'UI/app_router.dart';
+import 'UI/Views/Widget/app_branding_widget.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // 1. Khởi tạo Firebase (Hỗ trợ Web, Android, iOS)
+  // 1. Khởi tạo Firebase
   try {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
@@ -25,27 +25,34 @@ Future<void> main() async {
     debugPrint('Firebase.initializeApp warning/error: $e');
   }
 
-  // 2. Khởi tạo SharedPreferences Service
-  final preferencesService = await PreferencesService.init();
+  // 2. Khởi tạo SettingRepository (SharedPreferences)
+  final settingRepository = await SettingRepository.init();
 
-  // 3. Khởi tạo Notification Service (FCM & Local Notifications)
-  final notificationService = NotificationService(preferencesService);
+  // 3. Khởi tạo Notification Repository (FCM & Local Notifications)
+  final notificationRepository = NotificationRepository(settingRepository);
+  // Bấm vào thông báo (local hoặc FCM) -> mở đúng màn hình như /chat/{id}, /likes
+  notificationRepository.onRoute = (route) => AppRouter.router.push(route);
   try {
-    await notificationService.init();
+    await notificationRepository.init();
   } catch (e) {
-    debugPrint('NotificationService init warning: $e');
+    debugPrint('NotificationRepository init warning: $e');
   }
 
   // 4. Chạy App với Riverpod ProviderScope
   runApp(
     ProviderScope(
       overrides: [
-        preferencesServiceProvider.overrideWithValue(preferencesService),
-        notificationServiceProvider.overrideWithValue(notificationService),
+        settingRepositoryProvider.overrideWithValue(settingRepository),
+        notificationRepositoryProvider.overrideWithValue(notificationRepository),
       ],
       child: const DatingLyApp(),
     ),
   );
+
+  // App được mở từ thông báo khi đã tắt hẳn: điều hướng sau khi UI đã dựng xong
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    notificationRepository.handleInitialMessage();
+  });
 }
 
 class DatingLyApp extends ConsumerWidget {
@@ -53,10 +60,8 @@ class DatingLyApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Kích hoạt đồng bộ FCM token + thông báo match/tin nhắn mới
     ref.watch(notificationBootstrapProvider);
 
-    // Lắng nghe trạng thái Dark Mode từ SharedPreferences thông qua Riverpod
     final isDarkMode = ref.watch(
       preferencesViewModelProvider.select((state) => state.isDarkMode),
     );
